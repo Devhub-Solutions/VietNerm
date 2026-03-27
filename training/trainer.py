@@ -32,6 +32,14 @@ class PhoBERTNERTrainer:
     trains a PhoBERT model with BIO tagging, and saves the model.
     """
 
+    # Config keys that must be numeric (YAML may parse '2e-5' as str)
+    _FLOAT_KEYS = {"learning_rate", "weight_decay", "train_split", "valid_split"}
+    _INT_KEYS = {
+        "max_length", "num_train_epochs", "per_device_train_batch_size",
+        "per_device_eval_batch_size", "warmup_steps", "logging_steps",
+        "early_stopping_patience",
+    }
+
     def __init__(self, config: Dict[str, Any]) -> None:
         """Initialize the trainer with configuration.
 
@@ -40,14 +48,36 @@ class PhoBERTNERTrainer:
                 model_name, max_length, num_train_epochs, learning_rate,
                 per_device_train_batch_size, weight_decay, warmup_steps, etc.
         """
-        self._config = config
-        self._model_name: str = config.get("model_name", "vinai/phobert-base")
-        self._max_length: int = config.get("max_length", 512)
+        self._config = self._coerce_config_types(config)
+        self._model_name: str = self._config.get("model_name", "vinai/phobert-base")
+        self._max_length: int = self._config.get("max_length", 512)
         self._tokenizer = None
         self._model = None
         self._label_list: List[str] = []
         self._label2id: Dict[str, int] = {}
         self._id2label: Dict[int, str] = {}
+
+    @classmethod
+    def _coerce_config_types(cls, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Ensure numeric config values have correct types.
+
+        YAML safe_load parses '2e-5' as a string (not float).
+        This method coerces known numeric keys to their expected types.
+        """
+        out = dict(config)
+        for key in cls._FLOAT_KEYS:
+            if key in out and not isinstance(out[key], float):
+                try:
+                    out[key] = float(out[key])
+                except (ValueError, TypeError):
+                    pass
+        for key in cls._INT_KEYS:
+            if key in out and not isinstance(out[key], int):
+                try:
+                    out[key] = int(out[key])
+                except (ValueError, TypeError):
+                    pass
+        return out
 
     @classmethod
     def from_config_file(cls, config_path: Path) -> "PhoBERTNERTrainer":
