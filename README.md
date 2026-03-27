@@ -1,3 +1,72 @@
+
+==================================================
+DISCLAIMER & ETHICAL USE
+==================================================
+
+Dự án này được xây dựng phục vụ nghiên cứu AI và xử lý tài liệu (Document AI).
+
+Tất cả dữ liệu được sinh ra trong dự án này hoàn toàn là dữ liệu giả lập (synthetic data),
+chỉ phục vụ mục đích nghiên cứu và phát triển hệ thống AI.
+
+Các nguyên tắc quan trọng:
+
+1. Dữ liệu giả lập
+
+Tất cả dữ liệu trong dự án:
+
+- Không sử dụng dữ liệu cá nhân thật
+- Không sử dụng giấy tờ thật
+- Không thu thập thông tin người dùng
+
+Dữ liệu được sinh hoàn toàn từ hệ thống generator.
+
+
+2. An toàn số định danh (ID)
+
+Hệ thống sinh dữ liệu được thiết kế để không trùng với dữ liệu thật.
+
+Các nguyên tắc:
+
+- Các số định danh được sinh ngẫu nhiên
+- Kiểm tra xác suất để tránh trùng với quy luật số thật
+- Ưu tiên sử dụng các đầu số chưa được cấp phát
+
+Ví dụ ID giả lập:
+
+Mock ID: 900988214412
+
+
+3. Hình ảnh giấy tờ
+
+Nếu sử dụng hệ thống render mockup giấy tờ:
+
+- Luôn có watermark "SAMPLE" hoặc "MOCKUP"
+- Không chia sẻ hình ảnh giống giấy tờ thật lên các nền tảng công cộng
+  nếu không có watermark
+
+Ví dụ watermark:
+
+SAMPLE
+MOCKUP
+SYNTHETIC DATA
+
+
+4. Mục đích sử dụng
+
+Dự án được xây dựng cho:
+
+- Research AI
+- Document AI
+- OCR / NER pipeline
+- Synthetic dataset generation
+
+Không được sử dụng cho:
+
+- Giả mạo giấy tờ
+- Tạo giấy tờ giả
+- Lừa đảo hoặc gian lận
+
+
 # VietNerm - Document AI Factory cho Giấy tờ Việt Nam
 
 Hệ thống AI pipeline hoàn chỉnh để trích xuất thực thể (NER) từ các loại giấy tờ tiếng Việt, sử dụng kiến trúc PhoBERT.
@@ -272,4 +341,13 @@ result = mapper.map_entities(raw_entities)
 
 ## License
 
-MIT License
+
+
+==================================================
+LICENSE
+==================================================
+Copyright (c) 2026 Devhub Solutions
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files to deal in the Software
+without restriction.
