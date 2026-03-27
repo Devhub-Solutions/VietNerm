@@ -1,8 +1,6 @@
 
-==================================================
-DISCLAIMER & ETHICAL USE
-==================================================
-
+# DISCLAIMER & ETHICAL USE #
+```shell
 Dự án này được xây dựng phục vụ nghiên cứu AI và xử lý tài liệu (Document AI).
 
 Tất cả dữ liệu được sinh ra trong dự án này hoàn toàn là dữ liệu giả lập (synthetic data),
@@ -65,7 +63,7 @@ Không được sử dụng cho:
 - Giả mạo giấy tờ
 - Tạo giấy tờ giả
 - Lừa đảo hoặc gian lận
-
+```
 
 # VietNerm - Document AI Factory cho Giấy tờ Việt Nam
 
@@ -340,14 +338,10 @@ result = mapper.map_entities(raw_entities)
 5. Tạo Pull Request
 
 ## License
-
-
-
-==================================================
-LICENSE
-==================================================
+```
 Copyright (c) 2026 Devhub Solutions
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files to deal in the Software
 without restriction.
+```
