@@ -1,0 +1,14 @@
+SOCIALIST REPUBLIC OF VIET NAM
+Independence - Freedom - Happiness
+
+CĂN CƯỚC CÔNG DÂN
+Citizen Identity Card
+
+Số / No.: {{ id_number }}
+Họ và tên / Full name: {{ full_name }}
+Ngày sinh / Date of birth: {{ date_of_birth }}
+Giới tính / Sex: {{ gender }}
+Quốc tịch / Nationality: {{ nationality }}
+Quê quán / Place of origin: {{ place_of_origin }}
+Nơi thường trú / Place of residence: {{ place_of_residence }}
+Có giá trị đến / Date of expiry: {{ date_of_expiry }}

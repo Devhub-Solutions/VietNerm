@@ -1,0 +1,47 @@
+{
+  "labels": [
+    "O",
+    "B-date_of_birth",
+    "B-date_of_expiry",
+    "B-full_name",
+    "B-gender",
+    "B-id_number",
+    "B-nationality",
+    "B-place_of_origin",
+    "B-place_of_residence",
+    "I-full_name",
+    "I-nationality",
+    "I-place_of_origin",
+    "I-place_of_residence"
+  ],
+  "label2id": {
+    "O": 0,
+    "B-date_of_birth": 1,
+    "B-date_of_expiry": 2,
+    "B-full_name": 3,
+    "B-gender": 4,
+    "B-id_number": 5,
+    "B-nationality": 6,
+    "B-place_of_origin": 7,
+    "B-place_of_residence": 8,
+    "I-full_name": 9,
+    "I-nationality": 10,
+    "I-place_of_origin": 11,
+    "I-place_of_residence": 12
+  },
+  "id2label": {
+    "0": "O",
+    "1": "B-date_of_birth",
+    "2": "B-date_of_expiry",
+    "3": "B-full_name",
+    "4": "B-gender",
+    "5": "B-id_number",
+    "6": "B-nationality",
+    "7": "B-place_of_origin",
+    "8": "B-place_of_residence",
+    "9": "I-full_name",
+    "10": "I-nationality",
+    "11": "I-place_of_origin",
+    "12": "I-place_of_residence"
+  }
+}

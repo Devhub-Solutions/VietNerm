@@ -1,0 +1,32 @@
+doc_type: giay_ra_vien
+entities:
+  - name: hospital_name
+    type: organization
+  - name: department
+    type: department
+  - name: medical_code
+    type: code
+  - name: patient_name
+    type: person_name
+  - name: patient_dob
+    type: date
+  - name: patient_gender
+    type: gender
+  - name: patient_ethnicity
+    type: ethnicity
+  - name: patient_occupation
+    type: occupation
+  - name: patient_address
+    type: address
+  - name: bhxh_code
+    type: code
+  - name: admission_date
+    type: datetime
+  - name: discharge_date
+    type: datetime
+  - name: diagnosis
+    type: diagnosis
+  - name: treatment_method
+    type: treatment
+  - name: notes
+    type: text

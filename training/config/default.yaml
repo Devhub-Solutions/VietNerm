@@ -1,0 +1,17 @@
+model_name: "vinai/phobert-base"
+max_length: 512
+num_train_epochs: 7
+learning_rate: 2e-5
+per_device_train_batch_size: 16
+per_device_eval_batch_size: 16
+weight_decay: 0.01
+warmup_steps: 100
+logging_steps: 50
+eval_strategy: "epoch"
+save_strategy: "epoch"
+load_best_model_at_end: true
+metric_for_best_model: "f1"
+optim: "adamw_torch"
+early_stopping_patience: 2
+train_split: 0.8
+valid_split: 0.1

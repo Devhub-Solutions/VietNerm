@@ -1,0 +1,22 @@
+doc_type: vehicle_registration
+entities:
+  - name: owner_name
+    type: person_name
+  - name: owner_address
+    type: address
+  - name: plate_number
+    type: plate
+  - name: vehicle_type
+    type: vehicle_type
+  - name: brand
+    type: brand
+  - name: model_code
+    type: code
+  - name: engine_number
+    type: code
+  - name: chassis_number
+    type: code
+  - name: color
+    type: color
+  - name: registration_date
+    type: date

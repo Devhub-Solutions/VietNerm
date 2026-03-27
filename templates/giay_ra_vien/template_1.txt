@@ -1,0 +1,22 @@
+{{ dept_mgmt }}
+{{ hospital_name }}
+CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+Độc lập - Tự do - Hạnh phúc
+
+Số lưu trữ: {{ medical_code }}
+Khoa: {{ department }}
+
+GIẤY RA VIỆN
+
+Họ tên người bệnh: {{ patient_name }}
+Năm sinh: {{ patient_dob }}
+Giới tính: {{ patient_gender }}
+Dân tộc: {{ patient_ethnicity }}
+Nghề nghiệp: {{ patient_occupation }}
+Mã Số BHXH/Thẻ BHYT Số: {{ bhxh_code }}
+Địa chỉ: {{ patient_address }}
+Vào viện lúc: {{ admission_date }}
+Ra viện lúc: {{ discharge_date }}
+Chẩn đoán: {{ diagnosis }}
+Phương pháp điều trị: {{ treatment_method }}
+Ghi chú: {{ notes }}

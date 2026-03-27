@@ -1,0 +1,18 @@
+doc_type: cccd
+entities:
+  - name: id_number
+    type: id
+  - name: full_name
+    type: person_name
+  - name: date_of_birth
+    type: date
+  - name: gender
+    type: gender
+  - name: nationality
+    type: nationality
+  - name: place_of_origin
+    type: address
+  - name: place_of_residence
+    type: address
+  - name: date_of_expiry
+    type: date

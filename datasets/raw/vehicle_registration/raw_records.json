@@ -1,0 +1,122 @@
+[
+  {
+    "owner_name": "ĐỖ THỊ MAI",
+    "owner_address": "Phường 3, Quận Hải Châu, Lâm Đồng",
+    "plate_number": "47R-163.97",
+    "vehicle_type": "Xe khách",
+    "brand": "SYM",
+    "model_code": "Lux A2.0",
+    "engine_number": "G2377116",
+    "chassis_number": "MHKAA7935525061",
+    "color": "Bạc",
+    "registration_date": "05/07/2022"
+  },
+  {
+    "owner_name": "PHẠM THỊ NGỌC",
+    "owner_address": "Thôn Phủ Mỹ, Xã Quế Xuân 2, Quận Bình Thạnh, Hải Phòng",
+    "plate_number": "47T-908.61",
+    "vehicle_type": "Xe đầu kéo",
+    "brand": "Honda",
+    "model_code": "Morning S",
+    "engine_number": "G8199139",
+    "chassis_number": "MALA6997486466",
+    "color": "Đỏ",
+    "registration_date": "28/07/2024"
+  },
+  {
+    "owner_name": "LÝ BẢO CHÂU",
+    "owner_address": "Thôn Trung, Xã Lộc Tân, Quận 5, Kiên Giang",
+    "plate_number": "71A2 64464",
+    "vehicle_type": "Xe bán tải",
+    "brand": "SYM",
+    "model_code": "XL7",
+    "engine_number": "E2789541",
+    "chassis_number": "JMZGH3912123325",
+    "color": "Trắng",
+    "registration_date": "02/04/2020"
+  },
+  {
+    "owner_name": "HỒ GIA HUY",
+    "owner_address": "Thôn Tân, Phường Lộc Sơn, Huyện Gia Lâm, Khánh Hòa",
+    "plate_number": "83T5 40193",
+    "vehicle_type": "Xe máy",
+    "brand": "Thaco",
+    "model_code": "Wave Alpha",
+    "engine_number": "4A2116365",
+    "chassis_number": "MHFHB9442824042",
+    "color": "Cam",
+    "registration_date": "15/10/2023"
+  },
+  {
+    "owner_name": "PHAN QUỐC HUY",
+    "owner_address": "Phường Lộc Sơn, Huyện Quế Sơn, Thái Nguyên",
+    "plate_number": "29S6 36449",
+    "vehicle_type": "Xe khách",
+    "brand": "Thaco",
+    "model_code": "CX-5 2.0L",
+    "engine_number": "1NZ3276099",
+    "chassis_number": "JMZGH5154446197",
+    "color": "Xám",
+    "registration_date": "25/06/2016"
+  },
+  {
+    "owner_name": "HỒ THỊ LAN",
+    "owner_address": "279/88/26 Điện Biên Phủ, KP5, Phường Cao Thắng, Hồ Chí Minh",
+    "plate_number": "51P-805.72",
+    "vehicle_type": "Xe mô tô",
+    "brand": "Honda",
+    "model_code": "Accent 1.4AT",
+    "engine_number": "KF6359550",
+    "chassis_number": "RLHHA1634437529",
+    "color": "Vàng",
+    "registration_date": "13/09/2024"
+  },
+  {
+    "owner_name": "BÙI THỊ NGỌC",
+    "owner_address": "98/29/9 Phan Chu Trinh, KP2, Xã Quế Xuân 2, Cần Thơ",
+    "plate_number": "60D3 51493",
+    "vehicle_type": "Xe bán tải",
+    "brand": "Ford",
+    "model_code": "K250",
+    "engine_number": "E2237671",
+    "chassis_number": "MNBJ5810171758",
+    "color": "Xám",
+    "registration_date": "01/07/2024"
+  },
+  {
+    "owner_name": "PHẠM NGỌC HÀ",
+    "owner_address": "59/25/13 Điện Biên Phủ, KP3, Phường 3, Đà Nẵng",
+    "plate_number": "47F-928.25",
+    "vehicle_type": "Xe mô tô",
+    "brand": "VinFast",
+    "model_code": "C200",
+    "engine_number": "JA6808920",
+    "chassis_number": "MALA1079478193",
+    "color": "Vàng",
+    "registration_date": "13/11/2020"
+  },
+  {
+    "owner_name": "HOÀNG VĂN NAM",
+    "owner_address": "Số 176 Hai Bà Trưng, Thôn Phủ Mỹ, Huyện Đức Trọng, Huế",
+    "plate_number": "99Y-112.65",
+    "vehicle_type": "Xe tải nhẹ",
+    "brand": "Hyundai",
+    "model_code": "XL7",
+    "engine_number": "4A8911611",
+    "chassis_number": "MHFHB4492238357",
+    "color": "Bạc",
+    "registration_date": "02/07/2016"
+  },
+  {
+    "owner_name": "DƯƠNG MINH ANH",
+    "owner_address": "Thôn Phủ Mỹ, Phường Tân Phú, Quận Thanh Xuân, Huế",
+    "plate_number": "99F9 91194",
+    "vehicle_type": "Xe tải nhẹ",
+    "brand": "Thaco",
+    "model_code": "C200",
+    "engine_number": "G6362167",
+    "chassis_number": "MHFHB4007603592",
+    "color": "Xanh dương",
+    "registration_date": "23/02/2016"
+  }
+]

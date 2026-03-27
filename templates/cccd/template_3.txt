@@ -1,0 +1,10 @@
+CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+CĂN CƯỚC
+
+Số CCCD: {{ id_number }}
+Họ tên: {{ full_name }}
+Ngày sinh: {{ date_of_birth }}
+Giới tính: {{ gender }}   Quốc tịch: {{ nationality }}
+Quê quán: {{ place_of_origin }}
+Địa chỉ: {{ place_of_residence }}
+Hạn đến: {{ date_of_expiry }}

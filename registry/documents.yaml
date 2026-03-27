@@ -1,0 +1,18 @@
+documents:
+  cccd:
+    name: "Căn cước công dân"
+    templates: templates/cccd
+    schema: templates/cccd/schema.yaml
+    generator: person
+
+  giay_ra_vien:
+    name: "Giấy ra viện"
+    templates: templates/giay_ra_vien
+    schema: templates/giay_ra_vien/schema.yaml
+    generator: hospital
+
+  vehicle_registration:
+    name: "Đăng ký xe"
+    templates: templates/vehicle_registration
+    schema: templates/vehicle_registration/schema.yaml
+    generator: vehicle

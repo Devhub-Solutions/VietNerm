@@ -1,52 +1,275 @@
-# VietNerm : PhoBERT Pipeline to Hugging Face
+# VietNerm - Document AI Factory cho Giấy tờ Việt Nam
 
-Dự án này là một hệ thống hoàn chỉnh để xây dựng mô hình trích xuất thực thể (NER) cho các loại giấy tờ tiếng Việt (Giấy ra viện, CCCD) dựa trên kiến trúc PhoBERT. Hệ thống bao gồm quy trình từ sinh dữ liệu mẫu (synthetic data), tạo dataset, huấn luyện mô hình và tự động deploy lên Hugging Face Hub.
+Hệ thống AI pipeline hoàn chỉnh để trích xuất thực thể (NER) từ các loại giấy tờ tiếng Việt, sử dụng kiến trúc PhoBERT.
 
-## 🌟 Tính năng chính
+**Pipeline**: Template → Synthetic Data → NER Dataset → Training → Model → HuggingFace → SDK
 
-- **Synthetic Data Engine**: Tự động sinh hàng ngàn mẫu dữ liệu từ template văn bản với thông tin ngẫu nhiên (tên, ngày sinh, địa chỉ, bệnh lý...).
-- **OCR Noise Simulation**: Giả lập các lỗi thường gặp khi quét OCR (nhầm lẫn số 0 và chữ o, mất ký tự...) để tăng độ bền vững cho mô hình.
-- **PhoBERT NER Pipeline**: Sử dụng `vinai/phobert-base` để huấn luyện mô hình trích xuất thực thể với độ chính xác cao.
-- **Hugging Face Integration**: Tích hợp sẵn script upload model và dataset lên Hugging Face Hub.
-- **CI/CD Automation**: Tự động hóa quy trình deploy thông qua GitHub Actions.
+## Kiến trúc tổng thể
 
-## 📁 Cấu trúc dự án
-
-```text
-vietnerm/
-├── .github/workflows/      # Cấu hình CI/CD (GitHub Actions)
-├── template_engine/        # Module xử lý template và sinh dữ liệu
-│   ├── config.py           # Danh sách dữ liệu mẫu (tên, bệnh viện, bệnh lý...)
-│   ├── generators.py       # Logic sinh record ngẫu nhiên
-│   └── noise.py            # Giả lập nhiễu OCR
-├── dataset/                # Module tạo và quản lý dataset
-│   └── builder.py          # Chuyển đổi record sang định dạng BIO cho NER
-├── train/                  # Module huấn luyện mô hình
-│   └── train_giaravien.py  # Script huấn luyện PhoBERT cho Giấy ra viện
-├── inference/              # Module dự đoán (inference)
-├── publish_to_hf.py        # Script upload model/dataset lên Hugging Face
-├── requirements.txt        # Danh sách thư viện cần thiết
-└── README.md               # Tài liệu hướng dẫn
+```
+┌─────────────┐    ┌──────────────┐    ┌──────────────┐    ┌───────────┐
+│  Templates   │───▶│  Synthetic   │───▶│   Dataset    │───▶│ Training  │
+│  (Jinja2)    │    │  Generator   │    │  (BIO NER)   │    │ (PhoBERT) │
+└─────────────┘    └──────────────┘    └──────────────┘    └─────┬─────┘
+                                                                  │
+                   ┌──────────────┐    ┌──────────────┐          │
+                   │     SDK      │◀───│  HuggingFace │◀─────────┘
+                   │  (VietNerm)  │    │    Hub       │    ┌───────────┐
+                   └──────┬───────┘    └──────────────┘    │  Models/  │
+                          │                                └───────────┘
+                          ▼
+                   ┌──────────────┐
+                   │  Inference   │──▶ {"name": "...", "dob": "..."}
+                   │  Pipeline    │
+                   └──────────────┘
 ```
 
-## 🛠️ Hướng dẫn sử dụng
+## Cấu trúc dự án
 
-### 1. Cài đặt môi trường
+```
+vietnerm/
+├── registry/                      # Registry document types
+│   └── documents.yaml
+├── templates/                     # Jinja2 templates cho từng loại giấy tờ
+│   ├── cccd/
+│   │   ├── schema.yaml
+│   │   └── template_*.txt
+│   └── giay_ra_vien/
+│       ├── schema.yaml
+│       └── template_*.txt
+├── synthetic/                     # Sinh dữ liệu tổng hợp
+│   ├── generators/                # Data generators (person, hospital, vehicle)
+│   ├── template_engine.py         # Render Jinja2 templates
+│   ├── noise_engine.py            # Giả lập lỗi OCR
+│   └── generate_dataset.py        # CLI entry point
+├── datasets/                      # Dữ liệu train/test
+│   ├── raw/{doc}/                 # Raw synthetic records
+│   └── ner/{doc}/                 # BIO-tagged NER data
+├── training/                      # Training pipeline
+│   ├── config/                    # Training configs per doc type
+│   ├── trainer.py                 # PhoBERT NER trainer
+│   └── train.py                   # Universal training CLI
+├── models/                        # Trained model output
+├── inference/                     # Inference pipeline
+│   ├── pipeline.py                # NERPipeline: load model, predict
+│   ├── schema_mapper.py           # Map BIO → structured dict
+│   └── postprocess.py             # Sub-token merging, validation
+├── huggingface/                   # Publish to HuggingFace Hub
+│   ├── push_model.py              # Upload model
+│   ├── push_dataset.py            # Upload dataset
+│   └── model_card.md              # Model card template
+├── sdk/vietnerm/                  # Python SDK package
+│   ├── __init__.py
+│   ├── ner.py                     # VietNerm, CCCDNer, GiayRaVienNer
+│   └── utils.py                   # Tiện ích xử lý text
+├── scripts/                       # Shell scripts
+│   ├── generate_data.sh
+│   ├── train.sh
+│   └── publish.sh
+├── docs/                          # Tài liệu
+│   ├── architecture.md
+│   └── adding_new_document.md
+├── raw_code/                      # Code gốc (tham khảo)
+├── requirements.txt
+└── .github/workflows/ci.yml       # CI/CD
+```
+
+## Cài đặt
+
+### Yêu cầu
+- Python 3.9+
+- PyTorch 1.10+
+- CUDA (khuyến nghị, không bắt buộc)
+
+### Cài đặt dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Quy trình huấn luyện và Deploy
-1. **Sinh dữ liệu và huấn luyện**: Chạy script trong thư mục `train/` để bắt đầu quy trình.
-2. **Cấu hình Secrets trên GitHub**:
-   - `HF_TOKEN`: Hugging Face Write Token.
-   - `HF_REPO_ID`: ID của model repo (ví dụ: `username/phobert-giaravien-ner`).
-3. **Tự động Deploy**: Mỗi khi bạn push code hoặc cập nhật model trong thư mục `models/`, GitHub Actions sẽ tự động upload phiên bản mới nhất lên Hugging Face.
+### Cài đặt SDK (development mode)
 
-### 3. Upload thủ công
 ```bash
-python publish_to_hf.py --path ./models/phobert_giaravien_ner --repo_id username/my-model --repo_type model
+pip install -e ./sdk/
 ```
 
----
-Dự án được tối ưu hóa cho các loại giấy tờ hành chính và y tế tại Việt Nam.
+## Bắt đầu nhanh
+
+### 1. Sinh dữ liệu tổng hợp
+
+```bash
+# Sinh 10,000 mẫu cho CCCD
+./scripts/generate_data.sh cccd 10000
+
+# Sinh 50,000 mẫu cho Giấy ra viện
+./scripts/generate_data.sh giay_ra_vien 50000
+```
+
+### 2. Huấn luyện mô hình
+
+```bash
+# Train model cho CCCD
+./scripts/train.sh cccd
+
+# Train model cho Giấy ra viện với custom params
+./scripts/train.sh giay_ra_vien --epochs 10 --batch_size 32
+```
+
+### 3. Trích xuất thực thể
+
+```python
+from vietnerm import VietNerm
+
+# Tạo extractor cho CCCD
+ner = VietNerm(doc_type="cccd")
+result = ner.extract("""
+Họ và tên: NGUYỄN VĂN A
+Ngày sinh: 01/01/1990
+Giới tính: Nam
+Quốc tịch: Việt Nam
+""")
+print(result)
+# {"name": "Nguyễn Văn A", "date_of_birth": "01/01/1990", ...}
+```
+
+### 4. Publish lên HuggingFace
+
+```bash
+./scripts/publish.sh cccd username
+```
+
+## Pipeline chi tiết
+
+### Bước 1: Định nghĩa Document Type
+
+Tạo template và schema trong `templates/{doc_type}/`:
+
+```yaml
+# templates/cccd/schema.yaml
+doc_type: cccd
+entities:
+  - name: name
+    type: person_name
+  - name: date_of_birth
+    type: date
+  - name: id_number
+    type: id
+```
+
+### Bước 2: Sinh dữ liệu
+
+```bash
+python synthetic/generate_dataset.py --doc cccd --size 10000
+```
+
+Pipeline tự động:
+1. Load template Jinja2
+2. Sinh dữ liệu ngẫu nhiên (tên, ngày sinh, địa chỉ...)
+3. Render template → text + character spans
+4. Inject nhiễu OCR
+5. Convert sang BIO NER format
+6. Split train/test (80/10/10)
+
+### Bước 3: Huấn luyện
+
+```bash
+python training/train.py --doc cccd --epochs 7
+```
+
+Sử dụng PhoBERT (`vinai/phobert-base`) fine-tuned cho NER token classification.
+
+### Bước 4: Inference
+
+```python
+from inference.pipeline import NERPipeline
+from inference.schema_mapper import SchemaMapper
+
+pipeline = NERPipeline(model_path="models/phobert/cccd/")
+raw_entities = pipeline.predict("Họ và tên: NGUYỄN VĂN A...")
+
+mapper = SchemaMapper(doc_type="cccd")
+result = mapper.map_entities(raw_entities)
+```
+
+## Thêm loại giấy tờ mới
+
+Xem hướng dẫn chi tiết: [docs/adding_new_document.md](docs/adding_new_document.md)
+
+Tóm tắt:
+1. Thêm entry vào `registry/documents.yaml`
+2. Tạo `templates/{doc_type}/schema.yaml`
+3. Tạo template files `templates/{doc_type}/template_*.txt`
+4. Thêm generator vào `synthetic/generators/`
+5. Thêm training config `training/config/{doc_type}.yaml`
+6. Sinh dữ liệu → Train → Publish
+
+## SDK API Reference
+
+### VietNerm
+
+```python
+from vietnerm import VietNerm
+
+# Tạo extractor
+ner = VietNerm(doc_type="cccd")
+ner = VietNerm(doc_type="cccd", model_path="path/to/model")
+ner = VietNerm(doc_type="cccd", device="cuda")
+
+# Trích xuất
+result = ner.extract(text)                    # Dict[str, str]
+result = ner.extract_with_confidence(text)    # Dict[str, {"value": str, "confidence": float}]
+raw = ner.extract_raw(text)                   # List[Dict] - raw entities
+```
+
+### Shortcut Classes
+
+```python
+from vietnerm import CCCDNer, GiayRaVienNer
+
+# CCCD (Căn cước công dân)
+cccd = CCCDNer()
+result = cccd.extract("Số: 079203030140\nHọ và tên: NGUYỄN VĂN A")
+
+# Giấy ra viện
+grv = GiayRaVienNer()
+result = grv.extract("Họ tên người bệnh: LÊ THỊ HẰNG\nChẩn đoán: Viêm phổi")
+```
+
+### Inference Pipeline (low-level)
+
+```python
+from inference.pipeline import NERPipeline
+from inference.schema_mapper import SchemaMapper
+
+# Load pipeline
+pipeline = NERPipeline(model_path="models/phobert/cccd/")
+raw_entities = pipeline.predict(text)
+
+# Map to structured output
+mapper = SchemaMapper(doc_type="cccd")
+result = mapper.map_entities(raw_entities)
+```
+
+## Các loại giấy tờ được hỗ trợ
+
+| Loại giấy tờ | Doc Type | Entities |
+|---|---|---|
+| Căn cước công dân | `cccd` | Số CCCD, Họ tên, Ngày sinh, Giới tính, Quốc tịch, Quê quán, Nơi thường trú, Hạn sử dụng |
+| Giấy ra viện | `giay_ra_vien` | Bệnh viện, Khoa, Mã y tế, Tên BN, Ngày sinh, Giới tính, Dân tộc, Nghề nghiệp, Địa chỉ, BHXH, Ngày vào/ra viện, Chẩn đoán, Phương pháp điều trị, Ghi chú |
+| Đăng ký xe | `vehicle_registration` | Tên chủ sở hữu, Biển số, Loại xe, Hãng, Số máy, Số khung |
+
+## Đóng góp
+
+1. Fork repository
+2. Tạo branch mới: `git checkout -b feature/ten-tinh-nang`
+3. Code theo conventions:
+   - Type hints cho tất cả functions
+   - Docstrings (Google style)
+   - UTF-8 cho text tiếng Việt
+   - `pathlib` cho đường dẫn file
+4. Chạy lint: `flake8 . --max-line-length=120`
+5. Tạo Pull Request
+
+## License
+
+MIT License

@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+.env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Models (too large for git)
+models/phobert/*/pytorch_model.bin
+models/phobert/*/model.safetensors
+models/phobert/*/tokenizer.json
+models/phobert/*/config.json
+!models/.gitkeep
+
+# Large datasets (keep small samples, ignore large generated ones)
+# datasets/raw/ and datasets/ner/ are tracked for version control
+# Uncomment below to ignore large datasets:
+# datasets/raw/
+# datasets/ner/
+
+# HuggingFace cache
+.cache/
+
+# Training outputs
+wandb/
+runs/
+*.log
+
+# Internal tools
+.claude/
+.mcp.json
+CLAUDE.md

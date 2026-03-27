@@ -1,0 +1,15 @@
+CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+Độc lập - Tự do - Hạnh phúc
+
+GIẤY ĐĂNG KÝ XE
+
+Chủ xe: {{ owner_name }}
+Địa chỉ: {{ owner_address }}
+Biển số đăng ký: {{ plate_number }}
+Loại xe: {{ vehicle_type }}
+Nhãn hiệu: {{ brand }}
+Số loại: {{ model_code }}
+Số máy: {{ engine_number }}
+Số khung: {{ chassis_number }}
+Màu sơn: {{ color }}
+Ngày đăng ký: {{ registration_date }}
