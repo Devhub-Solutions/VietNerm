@@ -1,81 +1,59 @@
 1. PHƯƠNG TIỆN
 Số lượng lốp, cỡ lốp/trục (Number of tires; Tire size/axle)
 (VEHICLE)
-Biển đăng ký: 60C-333.87
-Số quản lý: 6001s-086538
-1:2:185R14
+Biển đăng ký: {{ plate_number }}
+Số quản lý: {{ id_number }}
 (Registration Number)
 (Vehicle Inspection No.)
-2:2; 185R14
-Loại phương tiện: (Type) ô tô tải (thùng kín)
-Nhãn hiệu: (Mark) SUZUKI
-Số loại: (Model code) CARRYSGSCSTK
-Đồng Nai, ngày 22 tháng 12 năm 2023
-Số máy: (Engine Number) G16AID281744
+Loại phương tiện: (Type) {{ vehicle_type }}
+Nhãn hiệu: (Mark) {{ brand }}
+Số loại: (Model code) {{ model_code }}
+{{ registration_date }}
+Số máy: (Engine Number) {{ engine_number }}
 Số phiếu kiểm định
-(Issued on:
-Day/Month/Year)
-Số khung: (Chassis Number) MHYDN71T5HJ400609
-(Inspection Report No) ,3390676
-ĐƠN VỊ KIỂM ĐỊNH
-Năm, Nước sản xuất: 2016, Việt Nam-Indonesil Niên hạn SD: 2041
-6005D-4214223
-Dùng Tân
-SPECTION CENTER)
+(Issued on: Day/Month/Year)
+Số khung: (Chassis Number) {{ chassis_number }}
+(Inspection Report No)
+ĐƠN Vị KIỂM ĐỊNH
+Năm, Nước sản xuất: {{ manufacture_year }}, {{ manufacture_country }}
+Niên hạn SD:
+(INSPECTION CENTER)
 (Manufactured Year and Country)
 (Lifetime limit to)
-Có hiệu lực đến nhi
-Phết ngày ảng Kiểm
-Kinh doanh vận tải (Commercial Use
+Có hiệu lực đến hết ngày {{ expiry_date }}
+Kinh doanh vận tải (Commercial Use)
 Cải tạo (Modification)
 (Valid until)
-V72/2024-4 NHẢ
-200 ĐỚI 6
-20511
-GIÁM ĐÔ
-2
+GIÁM ĐỐC
 2. THÔNG SỐ KỸ THUẬT
 (SPECIFICATIONS)
-CÔNG TY CỔ PHẬN
-Phước Trường
 Công thức bánh xe: 4x2
 Vết bánh xe:
-1435/1435
-ĐÃNG XÂM CIA
-(mm)
 (Wheel Formula)
+(mm)
 (Wheel Tread)
 Kích thước bao: (Overall Dimension)
-04200x1715 x 2400
-(ww)
+(mm)
 Kích thước lòng thùng xe
 (Inside cargo container dimension)
-02160x1590x1590
 (mm)
-Chiều dài cơ sở: (Wheelbase)2625
+Chiều dài cơ sở: (Wheelbase)
 (mm)
 Khối lượng bản thân: (Kerb mass)
-1205 (kg)
-Khối lượng hàng CC theo TK/CP.TGGT:
-615/615 (kg)
+(kg)
+Khối lượng hàng CC theo TK/CP TGGT:
+(kg)
 (Design/Authorized pay load)
 Khối lượng toàn bộ theo TK/CP TGGT:
-1950/1950
+(kg)
 (Design/Authorized total mass)
-Đăng kiểm 6005D đồng nai
 Khối lượng kéo theo TK/CP TGGT:
 (kg)
-22/12/2023 15:57.00
 (Design/Authorized towed mass)
-Số người cho phép chở: 2 chỗ ngồi, 0 chỗ đứng, 0 chỗ năm
-Có lấp thiết bị giám sát hành trình (Equipped with Tachograph)
+Số người cho phép chở:
 (Permissible No. of Pers Carried: seat, stood place, laying place)
-Có lấp camera
-(Equipped with camera)
+Có lắp thiết bị giám sát hành trình (Equipped with Tachograph)
+Có lắp camera (Equipped with camera)
 Loại nhiên liệu: (Type of Fuel Used) Xăng
-Không cấp tem kiểm định (Inspection stamp was not issued
-Thể tích làm việc của động cơ: (Engine Displacement)
-Công suất lớn nhất/tốc độ quay: (Max.output/rpm) 68(kw)/5750vph
-Ghi chú: Biển đăng ký nền trắng
-Số sê-ri: (No.) DB-1158669
-15200E848
+{{ owner_name }}
+{{ owner_address }}

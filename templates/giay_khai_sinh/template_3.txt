@@ -1,36 +1,23 @@
 CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
 Độc lập Tự do Hạnh phúc
-Số: 200
-GIẤY KHẢI SINH
-Họ, chữ đệm, tên: nguyễn thùy ANH
-Ngày, tháng, năm sinh: 22/5/2017
-ghi bằng chữ: Ngày hai mươi hai, tháng năm
-năm hai nghìn không trăm mười bảy
-Giới tính: Nữ
+Số: {{ id_number }}
+GIẤY KHAI SINH
+Họ, chữ đệm, tên: {{ full_name }}
+Ngày, tháng, năm sinh: {{ date_of_birth }}
+ghi bằng chữ: {{ dob_text }}
+Giới tính: {{ gender }}
+Dân tộc: {{ ethnicity }}
+Quốc tịch: {{ nationality }}
+Nơi sinh: {{ place_of_birth }}
+Quê quán: {{ registration_place }}
+Họ, chữ đệm, tên người mẹ: {{ mother_name }}
 Dân tộc: Kinh
 Quốc tịch: Việt Nam
-Nơi sinh: Bệnh viện Đa khoa Gia Đình, thành phố Đà Nắng
-Quê quán: Phường Xuân Phú, thành phố Huế, tỉnh Thừa Thiên Huế
-Số định danh cá nhân: 048317003092
-1
-Họ, chữ đệm, tên người mẹ: TRần UYên THI
-Năm sinh: 28/9/1992
+Họ, chữ đệm, tên người cha: {{ father_name }}
 Dân tộc: Kinh
-Quốc tịch: việt nam
-Nơi cư trú: Tố 17, phường Thanh Khê Tay, quân Thanh Khê, thành phố, Đa Năng
-Họ, chữ đệm, tên người cha: NGUYỄN VĂN HOÀNG
-Năm sinh: 31/01/1989
-Dân tộc: Kinh
-Quốc tịch: việt nam
-Nơi cư trũ KS10/39 Ông Ích Khiêm, phường Hải Châu I, quân Hải Châu, thành phố Đa
-Năng
-Họ, chữ đệm, tên người đi khai sính: NGUYÊN VĂN HOÀNG
-Giấy tờ tuy thân Giấy CMND số 201572018, Công an thành phố Đà Nắng cấp ngày
-21/02/2006
-Nơi đăng ký khai sinh: Uỷ ban nhân dân Phường Hải Châu II, quân Hải Châu, thành
-phố Đà Năng
-Ngày, tháng, năm dăng ký: 07/7/2017
+Quốc tịch: Việt Nam
+Nơi đăng ký khai sinh: {{ registration_place }}
+Ngày, tháng, năm đăng ký: {{ registration_date }}
 NGƯỜI KÝ GIẤY KHAI SINH
-(Ký, ghi rõ ho, chữ đệm, chức vụ và đóng dau)
+(Ký, ghi rõ họ, chữ đệm, chức vụ và đóng dấu)
 PHÓ CHỦ TỊCH
-Ngô Thị Nhành

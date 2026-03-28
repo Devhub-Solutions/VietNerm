@@ -1,48 +1,22 @@
-Sở Y Tế Đà Nắng
+{{ dept_mgmt }}
 Cộng Hòa Xã Hội Chủ Nghĩa Việt Nam
-MS: 01/BV-01/ID:130224
-Bệnh Viện Đa Khoa Gia Đinh
-Độc lập-Tự do-Hạnh phúc
-Số lưu trữ:377151
-Khoa: Khoa Nội
-Mã Y tế: 501/153/24/020698
+MS: 01/BV-01
+{{ hospital_name }}
+Độc lập - Tự do - Hạnh phúc
+Số lưu trữ: {{ medical_code }}
+{{ department }}
+Mã Y tế: {{ medical_code }}
 GIẤY RA VIỆN
-Họ tên người bệnh: PHAN THỊ HOÀI SƠN THỊ
--Ngày/ tháng/ năm sinh: 02/04/1988
-(Tuổi: 36 tuổi)
-DN ON/VEN
-- Dân tộc:
-Nghề nghiệp
-Mã số BHXH/Thẻ BHYT số: 19
-GD4 4848120 07150
--Địa chỉ:
-14 Hồ Tương An Khê Thanh Khê Đà Nẫng Thế Năm
-- Vào viện lúc: 15 giờ 19 phút, ngày 29 tháng 11 năm 2024
--Ra viện lúc:
-15 giờ 00 phút, ngày 06 tháng 12 năm 2024
-- Chấn đoán:
-Viêm phế quản cấp
-Bệnh kèm
-TD hội chứng kích thích đường thở/viêm họng cấp
-Biến chứng
-Chua
-Phương pháp điều trị:
-Nội khoa
-TW
--Ghi chứ: Uống thuốc theo toa Tái khám theo lích hẹn bác sỹ, Đề nghị cho bệnh nhân nghi ngơi tại nhà thêm
-03 ngày sau khi ra viện kế từ ngày 07/12/2024 đến hết ngày 09/12/2024.
-convinced
-Ngày 06 tháng 12 năm 2024
-năm 2024
-TRƯỞNG KHOA
-THOORGINGLY
-HOR
-VII
-CỔ PHẦN
-Y KHOA
-moal
-BÁC SÝ
-ThS.BS. Bừi Ngọc Anh
-gia dình
-BS.CXI Giần Thị Huyền Chanh
-CHÂU.
+Họ tên người bệnh: {{ patient_name }}
+- Ngày/ tháng/ năm sinh: {{ patient_dob }}
+- Dân tộc: {{ patient_ethnicity }}
+Nghề nghiệp: {{ patient_occupation }}
+Mã số BHXH/Thẻ BHYT số: {{ bhxh_code }}
+- Địa chỉ: {{ patient_address }}
+- Vào viện lúc: {{ admission_date }}
+- Ra viện lúc: {{ discharge_date }}
+- Chẩn đoán: {{ diagnosis }}
+Phương pháp điều trị: {{ treatment_method }}
+- Ghi chú: {{ notes }}
+TRƯỜNG KHOA
+BÁC SĨ ĐIỀU TRị
