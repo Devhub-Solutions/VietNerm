@@ -48,3 +48,9 @@ runs/
 .claude/
 .mcp.json
 CLAUDE.md
+
+
+#model >100mb
+models/*
+datasets/*
+.env

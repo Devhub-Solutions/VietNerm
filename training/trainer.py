@@ -266,9 +266,10 @@ class PhoBERTNERTrainer:
         )
         trainer.train()
 
-        # Save model, tokenizer, and label map
-        print(f"==> Saving model to {output_dir}...")
+        # Save model, tokenizer, trainer state, and label map
+        print(f"==> Saving model and state to {output_dir}...")
         trainer.save_model(str(output_dir))
+        trainer.save_state()
         self._tokenizer.save_pretrained(str(output_dir))
 
         label_map_path = output_dir / "label_map.json"
@@ -419,8 +420,14 @@ def _validate_label_ids(dataset: Dataset, num_labels: int, name: str) -> None:
 
 
 def _compute_metrics(p: Any, id2label: Dict[int, str]) -> Dict[str, float]:
-    """Compute seqeval F1 metrics for NER evaluation."""
+    """Compute seqeval F1 metrics for NER evaluation.
+
+    Handles cases where p.predictions is a tuple (e.g. including hidden states).
+    """
     preds, labels = p
+    if isinstance(preds, tuple):
+        preds = preds[0]
+
     preds = np.argmax(preds, axis=-1)
     true_labels: List[List[str]] = []
     true_preds: List[List[str]] = []
@@ -443,15 +450,18 @@ def _compute_metrics(p: Any, id2label: Dict[int, str]) -> Dict[str, float]:
             true_labels, true_preds, output_dict=True
         )
         per_entity: Dict[str, float] = {}
+        # seqeval report keys are entity types (e.g. 'full_name'), not starting with B-
+        # We exclude 'micro avg', 'macro avg', etc.
+        skip_keys = {"micro avg", "macro avg", "weighted avg"}
         for k, v in report.items():
-            if isinstance(v, dict) and k.startswith("B-"):
-                etype = k[2:]
-                per_entity[etype] = v.get("f1-score", 0.0)
+            if isinstance(v, dict) and k not in skip_keys:
+                per_entity[k] = v.get("f1-score", 0.0)
+
         if per_entity:
             print("\n[Per-entity F1]")
             for etype, score in sorted(per_entity.items()):
                 print(f"  {etype:35s}: {score:.4f}")
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"    (Metric display error: {e})")
 
     return {"f1": overall_f1}

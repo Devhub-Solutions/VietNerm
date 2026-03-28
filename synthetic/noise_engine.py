@@ -242,14 +242,17 @@ class NoiseEngine:
             else:
                 new_lines.append(line)
 
+
         new_text = "\n".join(new_lines)
 
         # Recalculate entity positions by finding values in new text
+        # Use starting positions to avoid duplicate finding issues (e.g. 'Nam' in different fields)
         updated_entities = []
+        search_pos = 0
         for entity in entities:
             value = entity["value"]
-            # Search for the value near its expected position
-            idx = new_text.find(value)
+            # Search for the value starting from the last known end point
+            idx = new_text.find(value, search_pos)
             if idx != -1:
                 updated_entities.append({
                     "label": entity["label"],
@@ -257,8 +260,9 @@ class NoiseEngine:
                     "end": idx + len(value),
                     "value": value,
                 })
+                search_pos = idx + len(value)
             else:
-                # Value not found (shouldn't happen as we protect entities)
+                # Value not found (fallback to original)
                 updated_entities.append(entity)
 
         return new_text, updated_entities
