@@ -17,6 +17,7 @@ Biến môi trường cần set (qua Kaggle Secrets hoặc env):
 """
 
 import os
+import shutil
 import subprocess
 import sys
 import json
@@ -438,6 +439,35 @@ print(json.dumps({{"eval_f1": metrics.get("eval_f1", 0.0)}}))
         print(f"Published!")
         print(f"  Model:   https://huggingface.co/{model_repo}")
         print(f"  Dataset: https://huggingface.co/datasets/{dataset_repo}")
+
+        # ── Cleanup: xóa model + dataset cache sau khi đã push HF thành công ──
+        # Giải phóng disk space trên Kaggle (~500MB-1GB/model) để train doc type tiếp theo
+        print(f"\n[Cleanup] Freeing disk space after successful publish...")
+        _dirs_to_clean = [
+            Path(f"models/phobert/{doc_type}"),          # trained model
+            Path(f"datasets/ner/{doc_type}"),             # generated dataset
+        ]
+        freed_mb = 0
+        for _d in _dirs_to_clean:
+            if _d.exists():
+                try:
+                    _size = sum(f.stat().st_size for f in _d.rglob("*") if f.is_file())
+                    shutil.rmtree(_d)
+                    freed_mb += _size / (1024 * 1024)
+                    print(f"  Removed: {_d} ({_size / (1024*1024):.0f} MB)")
+                except Exception as _e:
+                    print(f"  WARNING: Could not remove {_d}: {_e}")
+        # Xóa HuggingFace model cache (phobert-base được cache khi load)
+        _hf_cache = Path.home() / ".cache" / "huggingface" / "hub"
+        if _hf_cache.exists():
+            try:
+                _size = sum(f.stat().st_size for f in _hf_cache.rglob("*") if f.is_file())
+                shutil.rmtree(_hf_cache)
+                freed_mb += _size / (1024 * 1024)
+                print(f"  Removed HF hub cache: {_hf_cache} ({_size / (1024*1024):.0f} MB)")
+            except Exception as _e:
+                print(f"  WARNING: Could not remove HF cache: {_e}")
+        print(f"  Total freed: {freed_mb:.0f} MB")
 
     except Exception as e:
         print(f"ERROR: Unexpected error: {e}")

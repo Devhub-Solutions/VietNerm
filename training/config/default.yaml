@@ -1,5 +1,7 @@
 model_name: "vinai/phobert-base"
+# PhoBERT hard limit: 258 tokens (256 + CLS + SEP)
 max_length: 256
+stride: 128  # sliding window overlap in subword tokens (128 = 50% overlap)
 num_train_epochs: 7
 learning_rate: 2.0e-5
 # batch_size=8 để an toàn với P100 16GB (PhoBERT max_length=256)

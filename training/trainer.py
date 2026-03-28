@@ -187,11 +187,14 @@ class PhoBERTNERTrainer:
             "ner_tags": Sequence(Value("string")),
         })
 
+        stride = self._config.get("stride", 128)
         fn_kwargs = {
             "tokenizer": self._tokenizer,
             "label2id": self._label2id,
             "max_length": self._max_length,
+            "stride": stride,
         }
+        print(f"    Sliding window: max_length={self._max_length}, stride={stride}")
 
         train_hf = Dataset.from_list(
             [{"tokens": s["tokens"], "ner_tags": s["ner_tags"]}
@@ -342,18 +345,116 @@ class PhoBERTNERTrainer:
 # Module-level functions (used by Trainer callbacks)
 # ═══════════════════════════════════════════
 
+# PhoBERT hard limit: max_position_embeddings = 258 (256 + CLS + SEP)
+PHOBERT_MAX_TOKENS = 256  # usable tokens excluding CLS/SEP
+
+
+def _encode_sample_to_subwords(
+    tokens: List[str],
+    ner_tags: List[str],
+    tokenizer: Any,
+    label2id: Dict[str, int],
+    id_to_label_keys: List[str],
+    num_labels: int,
+) -> Tuple[List[int], List[int]]:
+    """Encode a word-level sample to subword ids and aligned label ids.
+
+    Returns:
+        (subword_ids, subword_labels) — flat lists without CLS/SEP.
+        Labels for non-first subwords are -100 (ignored in loss).
+    """
+    subword_ids: List[int] = []
+    subword_labels: List[int] = []
+
+    for text, tag in zip(tokens, ner_tags):
+        # Guard: if tag is int (HF auto-encode), convert back to string
+        if isinstance(tag, int):
+            tag = (
+                id_to_label_keys[tag]
+                if tag < len(id_to_label_keys)
+                else "O"
+            )
+
+        word_tokens = tokenizer.encode(text, add_special_tokens=False)
+        if not word_tokens:
+            continue
+
+        label_id = label2id.get(tag, label2id["O"])
+        if not (0 <= label_id < num_labels):
+            label_id = label2id["O"]
+
+        subword_ids.extend(word_tokens)
+        subword_labels.append(label_id)
+        subword_labels.extend([-100] * (len(word_tokens) - 1))
+
+    return subword_ids, subword_labels
+
+
+def _make_windows(
+    subword_ids: List[int],
+    subword_labels: List[int],
+    tokenizer: Any,
+    max_length: int,
+    stride: int,
+) -> List[Tuple[List[int], List[int], List[int]]]:
+    """Slice a long subword sequence into overlapping windows.
+
+    Each window has at most `max_length` tokens (including CLS/SEP).
+    Windows overlap by `stride` subword tokens so entities near boundaries
+    are seen in multiple windows during training.
+
+    Returns:
+        List of (input_ids, attention_mask, labels) tuples, each padded
+        to exactly `max_length`.
+    """
+    usable = max_length - 2  # reserve slots for CLS and SEP
+    windows = []
+    step = max(1, usable - stride)
+    total = len(subword_ids)
+
+    start = 0
+    while start < total:
+        end = min(start + usable, total)
+        chunk_ids = subword_ids[start:end]
+        chunk_labels = subword_labels[start:end]
+
+        input_ids = [tokenizer.cls_token_id] + chunk_ids + [tokenizer.sep_token_id]
+        labels = [-100] + chunk_labels + [-100]
+
+        padding_len = max_length - len(input_ids)
+        mask = [1] * len(input_ids) + [0] * padding_len
+        input_ids += [tokenizer.pad_token_id] * padding_len
+        labels += [-100] * padding_len
+
+        windows.append((input_ids, mask, labels))
+
+        if end == total:
+            break
+        start += step
+
+    return windows
+
+
 def _tokenize_and_align_labels(
     examples: Dict,
     tokenizer: Any,
     label2id: Dict[str, int],
-    max_length: int = 512,
+    max_length: int = 256,
+    stride: int = 128,
 ) -> Dict[str, List]:
     """Tokenize with PhoBERT and align BIO labels to subword tokens.
 
-    Preserves the fix from the original code:
-    - isinstance(tag, int) guard for HF auto-encoding
-    - bounds check for label IDs
-    - sanity assert before GPU
+    Supports sliding window for documents longer than PhoBERT's 256-token
+    hard limit. Each long document is split into overlapping windows of
+    `max_length` tokens with `stride` overlap. This multiplies the number
+    of training samples but ensures no content is silently dropped.
+
+    Args:
+        examples: Batched HF dataset dict with 'tokens' and 'ner_tags'.
+        tokenizer: PhoBERT tokenizer.
+        label2id: Label string → int mapping.
+        max_length: Max tokens per window (must be <= 258 for PhoBERT).
+        stride: Overlap in subword tokens between consecutive windows.
     """
     num_labels = len(label2id)
     id_to_label_keys = list(label2id.keys())
@@ -362,53 +463,29 @@ def _tokenize_and_align_labels(
 
     for i, tokens in enumerate(examples["tokens"]):
         ner_tags = examples["ner_tags"][i]
-        input_ids = [tokenizer.cls_token_id]
-        labels = [-100]  # CLS
 
-        for text, tag in zip(tokens, ner_tags):
-            # Guard: if tag is int (HF auto-encode), convert back to string
-            if isinstance(tag, int):
-                tag = (
-                    id_to_label_keys[tag]
-                    if tag < len(id_to_label_keys)
-                    else "O"
-                )
-
-            word_tokens = tokenizer.encode(text, add_special_tokens=False)
-            if not word_tokens:
-                continue
-
-            label_id = label2id.get(tag, label2id["O"])
-
-            # Bounds check
-            if not (0 <= label_id < num_labels):
-                label_id = label2id["O"]
-
-            input_ids.extend(word_tokens)
-            labels.append(label_id)
-            labels.extend([-100] * (len(word_tokens) - 1))
-
-        input_ids.append(tokenizer.sep_token_id)
-        labels.append(-100)  # SEP
-
-        if len(input_ids) > max_length:
-            input_ids = input_ids[:max_length]
-            labels = labels[:max_length]
-
-        padding_len = max_length - len(input_ids)
-        mask = [1] * len(input_ids) + [0] * padding_len
-        input_ids += [tokenizer.pad_token_id] * padding_len
-        labels += [-100] * padding_len
-
-        # Sanity assert
-        bad = [l for l in labels if l != -100 and not (0 <= l < num_labels)]
-        assert not bad, (
-            f"Sample {i}: label out of range! bad={bad}, num_labels={num_labels}"
+        # Step 1: encode entire sample to flat subword sequence
+        subword_ids, subword_labels = _encode_sample_to_subwords(
+            tokens, ner_tags, tokenizer, label2id, id_to_label_keys, num_labels
         )
 
-        all_input_ids.append(input_ids)
-        all_attention_mask.append(mask)
-        all_labels.append(labels)
+        if not subword_ids:
+            continue
+
+        # Step 2: slice into windows (handles both short and long documents)
+        windows = _make_windows(
+            subword_ids, subword_labels, tokenizer, max_length, stride
+        )
+
+        for input_ids, mask, labels in windows:
+            # Sanity check
+            bad = [l for l in labels if l != -100 and not (0 <= l < num_labels)]
+            assert not bad, (
+                f"Sample {i}: label out of range! bad={bad}, num_labels={num_labels}"
+            )
+            all_input_ids.append(input_ids)
+            all_attention_mask.append(mask)
+            all_labels.append(labels)
 
     return {
         "input_ids": all_input_ids,
