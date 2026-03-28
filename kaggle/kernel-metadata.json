@@ -1,5 +1,5 @@
 {
-  "id": "INSERT_KAGGLE_USERNAME/vietnerm-train-pipeline",
+  "id": "ngocthanhdoan/vietnerm-train-pipeline",
   "title": "VietNerm Train Pipeline",
   "code_file": "vietnerm_train_kernel.py",
   "language": "python",
