@@ -5,18 +5,22 @@ entities:
   - name: owner_address
     type: address
   - name: plate_number
-    type: plate
+    type: id
   - name: vehicle_type
-    type: vehicle_type
+    type: text
   - name: brand
-    type: brand
+    type: text
   - name: model_code
-    type: code
+    type: text
   - name: engine_number
-    type: code
+    type: id
   - name: chassis_number
-    type: code
-  - name: color
-    type: color
+    type: id
+  - name: manufacture_year
+    type: number
+  - name: manufacture_country
+    type: address
+  - name: expiry_date
+    type: date
   - name: registration_date
     type: date

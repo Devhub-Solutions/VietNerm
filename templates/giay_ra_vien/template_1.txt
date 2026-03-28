@@ -1,22 +1,27 @@
-{{ dept_mgmt }}
-{{ hospital_name }}
-CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
-Độc lập - Tự do - Hạnh phúc
-
-Số lưu trữ: {{ medical_code }}
-Khoa: {{ department }}
-
-GIẤY RA VIỆN
-
-Họ tên người bệnh: {{ patient_name }}
-Năm sinh: {{ patient_dob }}
+SỞ Y TẾ QUẢNG NAM
+BỆNH VIỆN ĐA KHOA VĨNH ĐỨC THỊ
+Độc lập - Tự do - Hanh phúc trị
+MS: 01/BV-01
+Trong {{ department }} trị
+Số lưu trữ: {{ medical_code }}/GRV
+Số điện thoại: 02.35 2 214 249
+Mã y tế: 49159.24058220
+giáy ra viện s
+Trong Họ tên người bệnh: {{ patient_name }}
+Ngày sinh: {{ patient_dob }}
+- Dăn tộc: {{ patient_ethnicity }}
 Giới tính: {{ patient_gender }}
-Dân tộc: {{ patient_ethnicity }}
+MÃ SỐ BHXH/THè BHYT số: {{ bhxh_code }}
 Nghề nghiệp: {{ patient_occupation }}
-Mã Số BHXH/Thẻ BHYT Số: {{ bhxh_code }}
-Địa chỉ: {{ patient_address }}
+Xã Địa chi: {{ patient_address }}
 Vào viện lúc: {{ admission_date }}
-Ra viện lúc: {{ discharge_date }}
-Chẩn đoán: {{ diagnosis }}
-Phương pháp điều trị: {{ treatment_method }}
-Ghi chú: {{ notes }}
+Thế Ra viện lúc: {{ discharge_date }}
+Chấn đoán: {{ diagnosis }}
+Thuật thuật Phưong pháp điều trị: {{ treatment_method }}
+- Ghi chũ: E
+Tỉ Uống thuốc theo đơn thị
+{{ notes }}
+KHÔ GIÁM ĐỐC
+Trưởng khoa
+{{ hospital_name }}
+BSCK II. TRƯƠNG QUANG NHÂN THỊ

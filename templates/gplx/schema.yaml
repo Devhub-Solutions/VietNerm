@@ -1,4 +1,4 @@
-doc_type: cccd
+doc_type: gplx
 entities:
   - name: id_number
     type: id
@@ -6,13 +6,13 @@ entities:
     type: person_name
   - name: date_of_birth
     type: date
-  - name: gender
-    type: gender
   - name: nationality
     type: address
-  - name: place_of_origin
+  - name: address
     type: address
-  - name: place_of_residence
-    type: address
-  - name: date_of_expiry
+  - name: issue_date
     type: date
+  - name: expiry_date
+    type: date
+  - name: class
+    type: code

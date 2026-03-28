@@ -1,13 +1,13 @@
-CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
-Độc lập - Tự do - Hạnh phúc
-
+TÔNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM THUY
+Độc lập Tự do - Hạnh phúc
 CĂN CƯỚC CÔNG DÂN
-
-Số định danh cá nhân: {{ id_number }}
-Họ, chữ đệm và tên khai sinh: {{ full_name }}
+{{ id_number }}
+Họ và tên
+{{ full_name }}
 Ngày, tháng, năm sinh: {{ date_of_birth }}
+{{ nationality }}
 Giới tính: {{ gender }}
-Quốc tịch: {{ nationality }}
+Quốc tịch:
 Quê quán: {{ place_of_origin }}
-Nơi thường trú: {{ place_of_residence }}
+- Nơi thường trù {{ place_of_residence }}
 Có giá trị đến: {{ date_of_expiry }}

@@ -1,11 +1,13 @@
 doc_type: giay_ra_vien
 entities:
   - name: hospital_name
-    type: organization
+    type: hospital
+  - name: dept_mgmt
+    type: hospital
   - name: department
-    type: department
+    type: hospital
   - name: medical_code
-    type: code
+    type: id
   - name: patient_name
     type: person_name
   - name: patient_dob
@@ -13,20 +15,20 @@ entities:
   - name: patient_gender
     type: gender
   - name: patient_ethnicity
-    type: ethnicity
+    type: address
   - name: patient_occupation
-    type: occupation
+    type: address
   - name: patient_address
     type: address
   - name: bhxh_code
-    type: code
+    type: id
   - name: admission_date
-    type: datetime
+    type: date
   - name: discharge_date
-    type: datetime
+    type: date
   - name: diagnosis
-    type: diagnosis
+    type: text
   - name: treatment_method
-    type: treatment
+    type: text
   - name: notes
     type: text

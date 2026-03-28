@@ -16,3 +16,15 @@ documents:
     templates: templates/vehicle_registration
     schema: templates/vehicle_registration/schema.yaml
     generator: vehicle
+
+  gplx:
+    name: "Giấy phép lái xe"
+    templates: templates/gplx
+    schema: templates/gplx/schema.yaml
+    generator: gplx
+
+  giay_khai_sinh:
+    name: "Giấy khai sinh"
+    templates: templates/giay_khai_sinh
+    schema: templates/giay_khai_sinh/schema.yaml
+    generator: giay_khai_sinh

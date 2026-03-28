@@ -1,10 +1,17 @@
-CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+CÓ CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM THỊ
+Độc lập - Tự do - Hạnh phúc triển
+AND SOCIALIST REPUBLIC OF VIET NAMENT
+It Is Independence - Freedom - Happiness State
 CĂN CƯỚC
-
-Số CCCD: {{ id_number }}
-Họ tên: {{ full_name }}
-Ngày sinh: {{ date_of_birth }}
-Giới tính: {{ gender }}   Quốc tịch: {{ nationality }}
-Quê quán: {{ place_of_origin }}
-Địa chỉ: {{ place_of_residence }}
-Hạn đến: {{ date_of_expiry }}
+IDENTITY CARD
+0
+Thành Số đinh danh cá nhân/Personal identification number 1996
+{{ id_number }}
+Thuật Họ, chữ đệm và tên khai sinh /Full name: 1970
+{{ full_name }}
+1971 Ngày, tháng, năm sinh /Date of birth 1992
+Giới tinh/Son
+{{ date_of_birth }}
+{{ gender }}
+Lê Quốc tịch /Nationalty
+{{ nationality }}

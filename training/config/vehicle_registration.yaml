@@ -1,0 +1,10 @@
+doc_type: vehicle_registration
+model_name: vinai/phobert-base
+max_length: 512
+num_samples: 5000
+epochs: 5
+batch_size: 16
+learning_rate: 2.0e-5
+weight_decay: 0.01
+warmup_steps: 50
+early_stopping_patience: 2

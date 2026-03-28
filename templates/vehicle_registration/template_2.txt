@@ -1,0 +1,72 @@
+1. PHƯƠNG TIỆN
+(VEHICLE)
+Số lượng lốp, cỡ lốp/trục (Number of tires: Tire size/axle)
+Piến đăng ký: 92A-111.11
+Số quản lý: 9202D-000725
+1:2:205/65R16
+(Registration Number)
+(Vehicle Inspection No.)
+2:2:205/65R16
+Loại phương tiện: (Type) ô tỏ con (taxi)
+Nhãn hiệu:(Mark) TOYOTA
+Số loại: (Model code) INNOVA E TGN140L-MUMSKU
+Quảng Năm ngày 4 thống 11 năm 2019
+Số máy: (Engine Number) 1TRA457246
+Số phiếu kiểm dịnh
+Số khung: (Chassis Number) RL4JW8EM3J3238391
+Tính xê cơ giới 32-Assued on Day/Month/Year)
+(Inspection Report No)
+Năm, Nước sản xuất: 2018, Việt Nam
+CHI NHÀNH
+CÔNG TT TNH
+ĐƠN VỊ KIỂM ĐỊNH
+Niên hạn SD:
+9202D-23205/19
+(Manufactured Year and Country)
+Có hiệu lực đến hết ngàyovảng NAN
+BẢNG XIỀN CÓ GIVINSPECTION CENTER)
+(Lifetime limit to)
+Kinh doanh vận tải (Commercial Use)
+Cải tạo (Modification)
+(Valid until) 03/05/2020
+GIÁM ĐỐC
+2. THÔNG SỐ KỸ THUẬT
+(SPECIFICATIONS)
+Là Thanh Lùng
+Công thức bánh xe: 4x2
+Vết bánh xe:
+1540/1540
+(Wheel Formula)
+(mm)
+(Wheel Tread)
+Thành Kích thước bao: (Overall Dimension) Thu
+4735 x 1830 x 1795
+1
+mm
+Kích thước lòng thùng xe
+(Inside cargo container dimension)
+(mm)
+Chiều dài cơ sở: (Wheelbase)2750
+(mm)
+Khối lượng bản thân: (Kerb mass)
+1700 (kg)
+Khối lượng hàng CC theo TK/CP TGGT:
+(kg)
+(Design/Authorized pay load)
+Khối lượng toàn bộ theo TK/CP TGGT:
+2330/2330 (kg)
+(Design/Authorized total mass)
+Khối lượng kéo theo TK/CP TGGT:
+(kg)
+(Design/Authorized towed mass)
+Số người cho phép chở: 8 chỗ ngồi, 0 chỗ đứng, 0 chỗ năm
+(Permissible No. of Pers Carried: seat, stood place, laying place)
+Có lấp thiết bị giám sát hành trình (Equipped with Tachograph)
+x
+Loại nhiên liệu: (Type of Fuel Used) Xăng
+Không cấp tem kiểm định (Inspection stamp was not issued
+Thể tích làm việc của động cơ: (Engine Displacement)
+1998 (cm3)
+Ghi chú: Biển đăng ký nền trắng
+Công suất lớn nhất/tốc độ quay: (Max.output/rpm) 102(kW)/5600vph
+Số sc-ri: (No.) KD-0667017
