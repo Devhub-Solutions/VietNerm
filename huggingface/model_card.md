@@ -92,7 +92,10 @@ This model is built for **research and development purposes only**:
 
 ## About VietNerm
 
-VietNerm is a Document AI Factory for Vietnamese documents. It provides a complete pipeline from template-based synthetic data generation to model training and deployment.
+VietNerm is a Document AI Factory for Vietnamese documents. It provides a complete pipeline
+from template-based synthetic data generation to model training and deployment.
 
 - **Repository**: [Devhub-Solutions/VietNerm](https://github.com/Devhub-Solutions/VietNerm)
+- **Training dataset**: [${hf_username}/vietnerm-${doc_type}-dataset](https://huggingface.co/datasets/${hf_username}/vietnerm-${doc_type}-dataset)
+- **SDK**: `pip install vietnerm`
 - **License**: MIT — Copyright (c) 2026 Devhub Solutions

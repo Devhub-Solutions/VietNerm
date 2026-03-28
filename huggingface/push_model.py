@@ -20,6 +20,7 @@ def generate_model_card(
     doc_type: str,
     repo_id: str,
     model_dir: Path,
+    hf_username: str = "ngocthanhdoan",
 ) -> str:
     """Generate a model card from the template.
 
@@ -71,6 +72,7 @@ def generate_model_card(
         base_model=base_model,
         labels=labels_str,
         num_labels=len(labels),
+        hf_username=hf_username,
     )
 
 
@@ -107,6 +109,7 @@ def push_model(
     model_dir: Optional[str] = None,
     token: Optional[str] = None,
     private: bool = False,
+    hf_username: str = "ngocthanhdoan",
 ) -> str:
     """Push model to HuggingFace Hub.
 
@@ -116,6 +119,7 @@ def push_model(
         model_dir: Local model directory. Defaults to models/phobert/{doc_type}/.
         token: HuggingFace API token. Uses cached token if None.
         private: Whether to create a private repository.
+        hf_username: HuggingFace username for dataset link in model card.
 
     Returns:
         URL of the published model.
@@ -142,7 +146,7 @@ def push_model(
 
     # Generate and write model card
     print("[INFO] Generating model card...")
-    model_card = generate_model_card(doc_type, repo_id, model_path)
+    model_card = generate_model_card(doc_type, repo_id, model_path, hf_username=hf_username)
     readme_path = model_path / "README.md"
     with open(readme_path, "w", encoding="utf-8") as f:
         f.write(model_card)
@@ -185,6 +189,10 @@ def main() -> None:
         "--private", action="store_true",
         help="Create a private repository",
     )
+    parser.add_argument(
+        "--hf-username", default="ngocthanhdoan",
+        help="HuggingFace username for dataset link in model card",
+    )
 
     args = parser.parse_args()
     push_model(
@@ -193,6 +201,7 @@ def main() -> None:
         model_dir=args.model_dir,
         token=args.token,
         private=args.private,
+        hf_username=args.hf_username,
     )
 
 
