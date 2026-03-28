@@ -96,16 +96,26 @@ class SchemaMapper:
         # Entity type → output field mapping
         if entity_to_field:
             self.entity_to_field = entity_to_field
-        elif doc_type in self.DEFAULT_MAPPINGS:
-            self.entity_to_field = self.DEFAULT_MAPPINGS[doc_type]
         elif self.schema and "entities" in self.schema:
-            # Dynamically build mapping from schema entities
+            # Dynamically build mapping from schema entities FIRST
             # Label scheme convention: name 'full_name' -> entity type 'FULL_NAME'
             self.entity_to_field = {
                 ent["name"].upper(): ent["name"]
                 for ent in self.schema["entities"]
                 if "name" in ent
             }
+            # Fallback/Append default if it's a known doc type for backwards compat or aliases
+            if doc_type in self.DEFAULT_MAPPINGS:
+                for ent_type, f_name in self.DEFAULT_MAPPINGS[doc_type].items():
+                    if ent_type not in self.entity_to_field:
+                        # Only add if it maps to an expected field in schema
+                        # OR if no schema expected fields (which is not this case)
+                        if f_name in self.expected_fields:
+                            self.entity_to_field[ent_type] = f_name
+                        elif not self.expected_fields:
+                             self.entity_to_field[ent_type] = f_name
+        elif doc_type in self.DEFAULT_MAPPINGS:
+            self.entity_to_field = self.DEFAULT_MAPPINGS[doc_type]
         else:
             self.entity_to_field = {}
 

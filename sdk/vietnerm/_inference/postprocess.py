@@ -159,15 +159,26 @@ def clean_entity_boundaries(entities: List[Dict]) -> List[Dict]:
         text = ent["text"].strip()
 
         if t in seen_types:
+            # Special case: Merge multiple address or notes regions
+            if "ADDRESS" in t or "NOTES" in t or "DIAGNOSIS" in t:
+                # Find existing entry and append
+                for existing in cleaned:
+                    if existing["type"] == t:
+                        existing["text"] += ", " + text
+                        existing["end"] = ent.get("end", 0)
+                        break
             continue
 
         # Normalize gender (type is already uppercase)
         if "GENDER" in t:
             text = GENDER_NORMALIZE.get(text.upper(), text)
 
-        # Title-case names
-        if "NAME" in t and text == text.upper():
-            text = text.title()
+        # Title-case names (handle ALL-CAPS or mixed-case OCR errors)
+        if "NAME" in t:
+            # Only title-case if contains multiple lowercase (to preserve "Nguyễn Văn A" but fix "NGọc")
+            # Actually, the safest is to just .title() for names generally in Vietnamese
+            words = text.split()
+            text = " ".join([w.capitalize() for w in words])
 
         ent_clean = {
             "type": t,
