@@ -4,9 +4,16 @@ NER Pipeline - Load PhoBERT model and run NER prediction.
 Supports loading from:
   - Local path: /path/to/model/
   - HuggingFace Hub: username/phobert-{doc}-ner
+
+Sliding Window:
+  PhoBERT has a hard limit of 258 position embeddings (256 + CLS + SEP).
+  For long documents, the pipeline automatically splits tokens into overlapping
+  windows (stride=128 by default), runs inference on each window, then merges
+  predictions at overlapping positions using average confidence scoring.
 """
 
 import json
+from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -15,6 +22,9 @@ import torch
 from transformers import AutoModelForTokenClassification, AutoTokenizer
 
 from .postprocess import merge_subtoken_predictions, clean_entity_boundaries, compute_confidence
+
+# PhoBERT hard limit: 256 content tokens + CLS + SEP = 258
+_PHOBERT_MAX_CONTENT = 254  # leave 2 slots for CLS/SEP
 
 
 def _is_hub_id(model_path: str) -> bool:
@@ -43,20 +53,27 @@ def _load_label_map_from_hub(repo_id: str) -> Optional[Dict]:
 class NERPipeline:
     """PhoBERT-based NER pipeline for Vietnamese document entity extraction.
 
+    Automatically applies sliding window for documents longer than PhoBERT's
+    256-token limit. Predictions at overlapping positions are merged using
+    average confidence scoring.
+
     Args:
         model_path: Local path or HuggingFace hub ID for the model.
         device: Device to run inference on ('cpu', 'cuda', or 'auto').
-        max_length: Maximum token sequence length.
+        max_length: Maximum token sequence length (default 256, PhoBERT limit).
+        stride: Sliding window stride in subword tokens (default 128 = 50% overlap).
     """
 
     def __init__(
         self,
         model_path: str,
         device: str = "auto",
-        max_length: int = 512,
+        max_length: int = 256,
+        stride: int = 128,
     ) -> None:
         self.model_path = model_path
-        self.max_length = max_length
+        self.max_length = min(max_length, 256)  # enforce PhoBERT hard limit
+        self.stride = stride
 
         if device == "auto":
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -117,8 +134,155 @@ class NERPipeline:
             pos = end + 1
         return result
 
+    def _encode_tokens(
+        self, tokens: List[str]
+    ) -> Tuple[List[int], List[Optional[Tuple[int, int]]]]:
+        """Encode a list of word tokens into subword IDs.
+
+        Returns:
+            - subword_ids: flat list of subword token IDs (WITHOUT CLS/SEP)
+            - token_sw_ranges: for each word token, (sw_start, sw_end) index
+              into subword_ids, or None if the token produced no subwords.
+        """
+        subword_ids: List[int] = []
+        token_sw_ranges: List[Optional[Tuple[int, int]]] = []
+
+        for tok in tokens:
+            word_ids = self.tokenizer.encode(tok, add_special_tokens=False)
+            if not word_ids:
+                token_sw_ranges.append(None)
+            else:
+                sw_start = len(subword_ids)
+                subword_ids.extend(word_ids)
+                token_sw_ranges.append((sw_start, sw_start + len(word_ids)))
+
+        return subword_ids, token_sw_ranges
+
+    def _run_window(self, window_ids: List[int]) -> Tuple[List[str], List[float]]:
+        """Run a single forward pass on a window of subword IDs.
+
+        Args:
+            window_ids: Subword token IDs (WITHOUT CLS/SEP). Will be wrapped
+                with CLS/SEP and padded to max_length.
+
+        Returns:
+            - labels: predicted BIO label for each position in window_ids
+            - confidences: confidence score for each position
+        """
+        # Wrap with CLS/SEP
+        full_ids = [self.tokenizer.cls_token_id] + window_ids + [self.tokenizer.sep_token_id]
+        n = len(full_ids)
+
+        # Pad to max_length
+        pad_id = self.tokenizer.pad_token_id or 0
+        attention_mask = [1] * n + [0] * (self.max_length - n)
+        full_ids = full_ids + [pad_id] * (self.max_length - n)
+
+        input_tensor = torch.tensor([full_ids], dtype=torch.long).to(self.device)
+        mask_tensor = torch.tensor([attention_mask], dtype=torch.long).to(self.device)
+
+        with torch.no_grad():
+            outputs = self.model(input_ids=input_tensor, attention_mask=mask_tensor)
+
+        logits = outputs.logits[0]  # (max_length, num_labels)
+        probs = torch.softmax(logits, dim=-1)
+        pred_ids = logits.argmax(-1).tolist()
+        max_probs = probs.max(-1).values.tolist()
+
+        # Positions 1..len(window_ids) correspond to actual content (skip CLS at 0)
+        labels = []
+        confidences = []
+        for i in range(len(window_ids)):
+            pos = i + 1  # +1 for CLS
+            labels.append(self.id2label.get(pred_ids[pos], "O"))
+            confidences.append(float(max_probs[pos]))
+
+        return labels, confidences
+
+    def _predict_with_sliding_window(
+        self,
+        subword_ids: List[int],
+        token_sw_ranges: List[Optional[Tuple[int, int]]],
+    ) -> Tuple[List[str], List[float]]:
+        """Run sliding window inference over subword IDs.
+
+        Splits subword_ids into overlapping windows of size max_length-2
+        (leaving room for CLS/SEP), runs forward pass on each, then merges
+        predictions at overlapping positions using average confidence.
+
+        At overlapping positions, the label with the HIGHEST average confidence
+        across all windows is chosen.
+
+        Args:
+            subword_ids: All subword token IDs for the document.
+            token_sw_ranges: Mapping from word token index to subword range.
+
+        Returns:
+            - token_labels: BIO label for each word token
+            - token_confidences: confidence for each word token
+        """
+        content_size = self.max_length - 2  # slots available per window (excl CLS/SEP)
+        stride = self.stride
+        total_sw = len(subword_ids)
+
+        # Collect per-subword-position predictions: list of (label, confidence)
+        sw_predictions: Dict[int, List[Tuple[str, float]]] = defaultdict(list)
+
+        # Slide windows
+        start = 0
+        while start < total_sw:
+            end = min(start + content_size, total_sw)
+            window_ids = subword_ids[start:end]
+
+            labels, confidences = self._run_window(window_ids)
+
+            for local_i, (lbl, conf) in enumerate(zip(labels, confidences)):
+                global_i = start + local_i
+                sw_predictions[global_i].append((lbl, conf))
+
+            if end >= total_sw:
+                break
+            start += stride
+
+        # Merge: for each subword position, pick label with highest avg confidence
+        merged_labels: List[str] = []
+        merged_confs: List[float] = []
+        for sw_i in range(total_sw):
+            preds = sw_predictions.get(sw_i, [("O", 0.0)])
+            # Group by label, average confidence per label
+            label_conf: Dict[str, List[float]] = defaultdict(list)
+            for lbl, conf in preds:
+                label_conf[lbl].append(conf)
+            best_label = max(label_conf, key=lambda l: np.mean(label_conf[l]))
+            best_conf = float(np.mean(label_conf[best_label]))
+            merged_labels.append(best_label)
+            merged_confs.append(best_conf)
+
+        # Map subword predictions back to word token level
+        token_labels: List[str] = []
+        token_confidences: List[float] = []
+        for sw_range in token_sw_ranges:
+            if sw_range is None:
+                token_labels.append("O")
+                token_confidences.append(0.0)
+            else:
+                sw_s, sw_e = sw_range
+                sw_e = min(sw_e, total_sw)
+                if sw_e <= sw_s:
+                    token_labels.append("O")
+                    token_confidences.append(0.0)
+                else:
+                    # Use first subword's label (BIO convention), avg confidence
+                    token_labels.append(merged_labels[sw_s])
+                    token_confidences.append(float(np.mean(merged_confs[sw_s:sw_e])))
+
+        return token_labels, token_confidences
+
     def predict(self, text: str) -> List[Dict]:
         """Run NER prediction on input text.
+
+        Automatically applies sliding window for texts longer than PhoBERT's
+        256-token limit. For short texts, runs a single forward pass.
 
         Args:
             text: Raw input text (e.g., OCR output from a document).
@@ -129,7 +293,7 @@ class NERPipeline:
                 - text: Extracted text
                 - start: Character start offset
                 - end: Character end offset
-                - label: Full BIO label (e.g., 'B-PATIENT_NAME_VALUE')
+                - label: Full BIO label (e.g., 'B-patient_name')
                 - confidence: Prediction confidence score
         """
         tokens_with_pos = self.tokenize_with_offsets(text)
@@ -138,53 +302,13 @@ class NERPipeline:
 
         tokens = [t for t, _, _ in tokens_with_pos]
 
-        # Build input_ids and track subword→token mapping
-        input_ids: List[int] = [self.tokenizer.cls_token_id]
-        token_to_subword_start: List[Optional[int]] = []
-        token_to_subword_range: List[Optional[Tuple[int, int]]] = []
+        # Encode all tokens to subwords
+        subword_ids, token_sw_ranges = self._encode_tokens(tokens)
 
-        for tok in tokens:
-            word_tokens = self.tokenizer.encode(tok, add_special_tokens=False)
-            if not word_tokens:
-                token_to_subword_start.append(None)
-                token_to_subword_range.append(None)
-                continue
-            sw_start = len(input_ids)
-            token_to_subword_start.append(sw_start)
-            token_to_subword_range.append((sw_start, sw_start + len(word_tokens)))
-            input_ids.extend(word_tokens)
-
-        input_ids.append(self.tokenizer.sep_token_id)
-        if len(input_ids) > self.max_length:
-            input_ids = input_ids[: self.max_length]
-
-        inputs = torch.tensor([input_ids]).to(self.device)
-
-        with torch.no_grad():
-            outputs = self.model(inputs)
-
-        logits = outputs.logits[0]  # (seq_len, num_labels)
-        probs = torch.softmax(logits, dim=-1)
-        pred_ids = logits.argmax(-1).tolist()
-        max_probs = probs.max(-1).values.tolist()
-
-        # Map predictions back to token level
-        token_labels: List[str] = []
-        token_confidences: List[float] = []
-        for sw_start, sw_range in zip(token_to_subword_start, token_to_subword_range):
-            if sw_start is None or sw_start >= len(pred_ids):
-                token_labels.append("O")
-                token_confidences.append(0.0)
-            else:
-                token_labels.append(self.id2label.get(pred_ids[sw_start], "O"))
-                # Average confidence across subword tokens
-                if sw_range is not None:
-                    sw_s, sw_e = sw_range
-                    sw_e = min(sw_e, len(max_probs))
-                    conf = np.mean(max_probs[sw_s:sw_e]) if sw_e > sw_s else 0.0
-                    token_confidences.append(float(conf))
-                else:
-                    token_confidences.append(float(max_probs[sw_start]))
+        # Run sliding window inference (handles both short and long texts)
+        token_labels, token_confidences = self._predict_with_sliding_window(
+            subword_ids, token_sw_ranges
+        )
 
         # Decode BIO tags into entity spans
         raw_entities = merge_subtoken_predictions(
