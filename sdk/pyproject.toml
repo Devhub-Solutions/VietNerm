@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "vietnerm"
+dynamic = ["version"]
+description = "Vietnamese Document NER Extraction SDK using PhoBERT"
+readme = { file = "../README.md", content-type = "text/markdown" }
+license = { text = "MIT" }
+authors = [{ name = "VietNerm Team" }]
+requires-python = ">=3.9"
+keywords = ["nlp", "ner", "vietnamese", "phobert", "ocr", "document-ai"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+]
+dependencies = [
+    "torch>=2.0",
+    "transformers>=4.36",
+    "huggingface_hub>=0.20",
+    "numpy>=1.24",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "flake8",
+    "build",
+    "twine",
+]
+
+[project.urls]
+Homepage = "https://github.com/Devhub-Solutions/VietNerm"
+Repository = "https://github.com/Devhub-Solutions/VietNerm"
+"HuggingFace Models" = "https://huggingface.co/ngocthanhdoan"
+
+[tool.setuptools.dynamic]
+version = { attr = "vietnerm.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["vietnerm*"]
+
+[tool.setuptools.package-data]
+"vietnerm" = ["py.typed"]
