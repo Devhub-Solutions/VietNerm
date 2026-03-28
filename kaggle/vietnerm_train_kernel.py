@@ -92,19 +92,57 @@ else:
 os.chdir(PROJECT_DIR)
 sys.path.insert(0, PROJECT_DIR)
 
-# Install dependencies
-print("\nInstalling dependencies...")
+# Install dependencies — handle GPU compatibility
+print("\nChecking GPU CUDA compatibility...")
+gpu_compatible = False
+try:
+    import torch as _torch_check
+    if _torch_check.cuda.is_available():
+        _torch_check.zeros(1).cuda()
+        gpu_compatible = True
+        print(f"GPU OK: {_torch_check.cuda.get_device_name(0)}, CUDA {_torch_check.version.cuda}")
+except Exception as e:
+    print(f"GPU not compatible with pre-installed PyTorch: {e}")
+
+if not gpu_compatible:
+    # P100 (sm_60) cần PyTorch build với CUDA 11.8
+    # Thử cài PyTorch cu118 — version cuối hỗ trợ sm_60
+    print("Reinstalling PyTorch with CUDA 11.8 (supports P100/sm_60)...")
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-q",
+         "torch==2.2.2+cu118", "torchvision==0.17.2+cu118",
+         "--index-url", "https://download.pytorch.org/whl/cu118"],
+        check=False  # Nếu fail, sẽ fallback CPU
+    )
+    # Verify lại
+    try:
+        import importlib
+        import torch
+        importlib.reload(torch)
+        if torch.cuda.is_available():
+            torch.zeros(1).cuda()
+            print(f"GPU OK after reinstall: {torch.cuda.get_device_name(0)}")
+        else:
+            print("WARNING: GPU still not available, falling back to CPU")
+            os.environ["CUDA_VISIBLE_DEVICES"] = ""
+    except Exception as e2:
+        print(f"WARNING: GPU fallback failed ({e2}), using CPU")
+        os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
+print("\nInstalling project dependencies...")
 subprocess.run(
     [sys.executable, "-m", "pip", "install", "-q",
-     "torch==2.1.2", "torchvision==0.16.2",
-     "--index-url", "https://download.pytorch.org/whl/cu121"],
-    check=True
+     "-r", "requirements.txt", "accelerate", "--no-deps"],
+    check=False
 )
+# Cài lại những deps còn thiếu (nhưng không override torch)
 subprocess.run(
-    [sys.executable, "-m", "pip", "install", "-q", "-r", "requirements.txt", "accelerate"],
+    [sys.executable, "-m", "pip", "install", "-q",
+     "transformers", "datasets", "seqeval", "huggingface_hub",
+     "pyyaml", "Jinja2", "numpy", "accelerate"],
     check=True
 )
-
+print("Dependencies installed.")
 
 # ============================================================
 # 3. DISCOVER DOC TYPES
