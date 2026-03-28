@@ -274,11 +274,22 @@ for i, doc_type in enumerate(doc_types, 1):
              "--doc", doc_type,
              "--epochs", str(TRAIN_EPOCHS),
              "--batch_size", str(BATCH_SIZE)],
-            env=train_env
+            env=train_env,
+            capture_output=True,
+            text=True,
         )
+        # In stdout/stderr ra log để debug
+        if train_ret.stdout:
+            print(train_ret.stdout, end="")
         if train_ret.returncode != 0:
-            print("FAILED: Training failed!")
+            print(f"FAILED: Training failed (exit code {train_ret.returncode})!")
+            if train_ret.stderr:
+                # In toàn bộ stderr để thấy traceback thực sự
+                print("--- STDERR ---")
+                print(train_ret.stderr)
+                print("--- END STDERR ---")
             doc_result["status"] = "train_failed"
+            doc_result["error"] = train_ret.stderr[-1000:] if train_ret.stderr else "unknown"
             doc_result["time_minutes"] = round((time.time() - doc_start) / 60, 1)
             results[doc_type] = doc_result
             continue

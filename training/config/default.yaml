@@ -2,8 +2,10 @@ model_name: "vinai/phobert-base"
 max_length: 512
 num_train_epochs: 7
 learning_rate: 2.0e-5
-per_device_train_batch_size: 16
-per_device_eval_batch_size: 16
+# batch_size=8 để an toàn với max_length=512 trên P100 16GB
+# 512 tokens × 8 batch × 768 hidden × fp16 ≈ 3GB activations/layer — an toàn
+per_device_train_batch_size: 8
+per_device_eval_batch_size: 8
 weight_decay: 0.01
 warmup_steps: 100
 logging_steps: 50
