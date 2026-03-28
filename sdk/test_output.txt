@@ -1,0 +1,20 @@
+﻿
+--- Sample 1 ---
+Detected Type: cccd (Confidence: 1.0)
+  cccd: 1.0
+
+--- Sample 2 ---
+Detected Type: gplx (Confidence: 1.0)
+  gplx: 1.0
+
+--- Sample 3 ---
+Detected Type: giay_khai_sinh (Confidence: 1.0)
+  giay_khai_sinh: 1.0
+
+--- Sample 4 ---
+Detected Type: giay_ra_vien (Confidence: 1.0)
+  giay_ra_vien: 1.0
+
+--- Sample 5 ---
+Detected Type: vehicle_registration (Confidence: 1.0)
+  vehicle_registration: 1.0

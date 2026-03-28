@@ -98,6 +98,14 @@ class SchemaMapper:
             self.entity_to_field = entity_to_field
         elif doc_type in self.DEFAULT_MAPPINGS:
             self.entity_to_field = self.DEFAULT_MAPPINGS[doc_type]
+        elif self.schema and "entities" in self.schema:
+            # Dynamically build mapping from schema entities
+            # Label scheme convention: name 'full_name' -> entity type 'FULL_NAME'
+            self.entity_to_field = {
+                ent["name"].upper(): ent["name"]
+                for ent in self.schema["entities"]
+                if "name" in ent
+            }
         else:
             self.entity_to_field = {}
 
