@@ -60,17 +60,24 @@ class VehicleGenerator(BaseGenerator):
 
     def generate(self) -> Dict[str, str]:
         """Generate a vehicle registration record."""
+        reg_date = self._random_date()
+        exp_date = (datetime.strptime(reg_date, "%d/%m/%Y") + timedelta(days=2 * 365)).strftime("%d/%m/%Y")
+        
         return {
             "owner_name": self._random_name(),
             "owner_address": self._address_gen.generate(),
             "plate_number": self._random_plate(),
+            "id_number": "".join([str(random.randint(0, 9)) for _ in range(8)]),
             "vehicle_type": random.choice(VEHICLE_TYPES),
             "brand": random.choice(BRANDS),
             "model_code": random.choice(MODEL_CODES),
             "engine_number": self._random_engine_number(),
             "chassis_number": self._random_chassis_number(),
             "color": random.choice(COLORS),
-            "registration_date": self._random_date(),
+            "manufacture_year": str(random.randint(2010, 2024)),
+            "manufacture_country": random.choice(["Việt Nam", "Thái Lan", "Indonesia", "Nhật Bản"]),
+            "registration_date": reg_date,
+            "expiry_date": exp_date,
         }
 
     def _random_name(self) -> str:
