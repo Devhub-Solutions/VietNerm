@@ -248,7 +248,7 @@ class PhoBERTNERTrainer:
             ),
             logging_steps=self._config.get("logging_steps", 50),
             fp16=_use_gpu,
-            no_cuda=_cuda_disabled,
+            use_cpu=_cuda_disabled,
             optim=self._config.get("optim", "adamw_torch"),
             warmup_steps=self._config.get("warmup_steps", 100),
         )
