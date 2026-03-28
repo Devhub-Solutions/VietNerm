@@ -105,18 +105,19 @@ try:
             # Fix: reinstall PyTorch 2.3.1+cu121 — version cuối hỗ trợ sm_60 với Python 3.12.
             print(f"    WARNING: Compute capability {compute_cap} < 7.0 (GPU: {gpu_name})")
             print(f"    PyTorch >= 2.4 dropped sm_60 support. Installing PyTorch 2.3.1+cu121...")
-            _torch_whl = (
-                "torch==2.3.1+cu121"
-                " --extra-index-url https://download.pytorch.org/whl/cu121"
-            )
+            # torchvision MUST be reinstalled together with torch to avoid
+            # AttributeError: module 'torch.library' has no attribute 'register_fake'
+            # (register_fake was added in torch 2.4; torchvision 0.19+ requires it)
+            # Compatibility matrix: torch 2.3.x <-> torchvision 0.18.x
             _ret = subprocess.run(
                 [sys.executable, "-m", "pip", "install", "-q",
                  "torch==2.3.1+cu121",
+                 "torchvision==0.18.1+cu121",
                  "--extra-index-url", "https://download.pytorch.org/whl/cu121"],
                 capture_output=True, text=True
             )
             if _ret.returncode == 0:
-                print(f"    PyTorch 2.3.1+cu121 installed — P100 (sm_60) now supported.")
+                print(f"    PyTorch 2.3.1+cu121 + torchvision 0.18.1 installed — P100 (sm_60) now supported.")
                 gpu_available = True
             else:
                 print(f"    WARNING: PyTorch reinstall failed. Falling back to CPU.")
