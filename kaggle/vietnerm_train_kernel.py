@@ -101,11 +101,27 @@ try:
             print(f"    Compute capability {compute_cap} >= 7.0 — GPU compatible!")
             gpu_available = True
         else:
-            # sm_60 (P100) — KHÔNG tương thích với PyTorch >= 2.0+cu12x
+            # sm_60 (P100) — PyTorch >= 2.4 dropped sm_60 support.
+            # Fix: reinstall PyTorch 2.3.1+cu121 — version cuối hỗ trợ sm_60 với Python 3.12.
             print(f"    WARNING: Compute capability {compute_cap} < 7.0 (GPU: {gpu_name})")
-            print(f"    PyTorch 2.x+cu121 requires sm_70+. Falling back to CPU.")
-            print(f"    Training will be slower but will complete correctly.")
-            os.environ["CUDA_VISIBLE_DEVICES"] = ""
+            print(f"    PyTorch >= 2.4 dropped sm_60 support. Installing PyTorch 2.3.1+cu121...")
+            _torch_whl = (
+                "torch==2.3.1+cu121"
+                " --extra-index-url https://download.pytorch.org/whl/cu121"
+            )
+            _ret = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-q",
+                 "torch==2.3.1+cu121",
+                 "--extra-index-url", "https://download.pytorch.org/whl/cu121"],
+                capture_output=True, text=True
+            )
+            if _ret.returncode == 0:
+                print(f"    PyTorch 2.3.1+cu121 installed — P100 (sm_60) now supported.")
+                gpu_available = True
+            else:
+                print(f"    WARNING: PyTorch reinstall failed. Falling back to CPU.")
+                print(f"    Error: {_ret.stderr[-300:] if _ret.stderr else 'unknown'}")
+                os.environ["CUDA_VISIBLE_DEVICES"] = ""
     else:
         print("    WARNING: nvidia-smi failed — assuming no GPU")
 except FileNotFoundError:
@@ -113,21 +129,27 @@ except FileNotFoundError:
 except subprocess.TimeoutExpired:
     print("    WARNING: nvidia-smi timed out — assuming no GPU")
 
-# Double-check bằng torch nếu gpu_available=True
-# QUAN TRỌNG: Không dùng torch.zeros(1).cuda() để test vì nó không trigger
-# CUDA kernel thực sự — chỉ copy tensor, không phát hiện sm incompatibility.
-# Thay vào đó: chạy một matmul nhỏ để force CUDA kernel execution.
+# Double-check bằng torch: reload torch module sau khi reinstall (nếu có),
+# sau đó chạy matmul nhỏ để verify CUDA kernel thực sự hoạt động.
 if gpu_available:
     try:
+        # Reload torch nếu vừa reinstall
+        import importlib
+        if 'torch' in sys.modules:
+            import torch as _t
+            if hasattr(_t, '__version__'):
+                # Unload để load lại version mới
+                for _mod in list(sys.modules.keys()):
+                    if _mod.startswith('torch'):
+                        del sys.modules[_mod]
         import torch as _t
         if _t.cuda.is_available():
             # Chạy matmul nhỏ để trigger CUDA kernel thực sự
-            # Nếu sm không tương thích, sẽ crash ở đây thay vì giữa training
             _a = _t.randn(32, 32, device='cuda')
             _b = _t.randn(32, 32, device='cuda')
-            _c = _t.mm(_a, _b)  # Force CUDA kernel execution
+            _c = _t.mm(_a, _b)
             del _a, _b, _c
-            print(f"    PyTorch CUDA kernel test OK: {_t.cuda.get_device_name(0)}, CUDA {_t.version.cuda}")
+            print(f"    PyTorch {_t.__version__} CUDA kernel test OK: {_t.cuda.get_device_name(0)}")
         else:
             print("    WARNING: torch.cuda.is_available() = False — falling back to CPU")
             gpu_available = False
