@@ -1,12 +1,12 @@
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
+build-backend = "setuptools.backends.legacy:build"
 
 [project]
 name = "vietnerm"
 dynamic = ["version"]
 description = "Vietnamese Document NER Extraction SDK using PhoBERT"
-readme = { file = "README.md", content-type = "text/markdown" }
+readme = { file = "../README.md", content-type = "text/markdown" }
 license = { text = "MIT" }
 authors = [{ name = "VietNerm Team" }]
 requires-python = ">=3.9"

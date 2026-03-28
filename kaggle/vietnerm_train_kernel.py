@@ -359,7 +359,7 @@ features = Features({{"tokens": Sequence(Value("string")), "ner_tags": Sequence(
 test_hf = Dataset.from_list([{{"tokens": s["tokens"], "ner_tags": s["ner_tags"]}} for s in test_samples[:200]], features=features)
 test_tok = test_hf.map(_tokenize_and_align_labels, fn_kwargs={{"tokenizer": tokenizer, "label2id": label2id, "max_length": 256}}, batched=True)
 
-args = TrainingArguments('/tmp/eval_only', per_device_eval_batch_size=16, no_cuda=True)
+args = TrainingArguments('/tmp/eval_only', per_device_eval_batch_size=16, use_cpu=True)
 t = Trainer(model=model, args=args, eval_dataset=test_tok, compute_metrics=lambda p: _compute_metrics(p, id2label))
 metrics = t.evaluate()
 print(json.dumps({{"eval_f1": metrics.get("eval_f1", 0.0)}}))

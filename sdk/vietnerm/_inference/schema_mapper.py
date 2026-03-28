@@ -23,17 +23,12 @@ class SchemaMapper:
         entity_to_field: Optional explicit mapping from entity type to output field.
     """
 
-    # Default entity-to-field mappings per document type.
-    # Keys are UPPERCASE entity types (as produced by _normalize_etype in postprocess.py).
-    # Supports both label schemes:
-    #   HF Hub: B-id_number      -> ID_NUMBER
-    #   Local:  B-ID_NUMBER_VALUE -> ID_NUMBER
+    # Default entity-to-field mappings per document type
     DEFAULT_MAPPINGS: Dict[str, Dict[str, str]] = {
         "cccd": {
             "ID_NUMBER": "id_number",
             "FULL_NAME": "name",
-            "DATE_OF_BIRTH": "date_of_birth",  # HF Hub scheme
-            "DOB": "date_of_birth",             # old local scheme alias
+            "DOB": "date_of_birth",
             "GENDER": "gender",
             "NATIONALITY": "nationality",
             "PLACE_OF_ORIGIN": "place_of_origin",
@@ -56,16 +51,6 @@ class SchemaMapper:
             "DIAGNOSIS": "diagnosis",
             "TREATMENT_METHOD": "treatment_method",
             "NOTES": "notes",
-        },
-        "vehicle_registration": {
-            "PLATE_NUMBER": "plate_number",
-            "OWNER_NAME": "owner_name",
-            "OWNER_ADDRESS": "owner_address",
-            "BRAND": "brand",
-            "VEHICLE_TYPE": "vehicle_type",
-            "ENGINE_NUMBER": "engine_number",
-            "CHASSIS_NUMBER": "chassis_number",
-            "MANUFACTURE_YEAR": "manufacture_year",
         },
     }
 
@@ -96,24 +81,6 @@ class SchemaMapper:
         # Entity type → output field mapping
         if entity_to_field:
             self.entity_to_field = entity_to_field
-        elif self.schema and "entities" in self.schema:
-            # Dynamically build mapping from schema entities FIRST
-            # Label scheme convention: name 'full_name' -> entity type 'FULL_NAME'
-            self.entity_to_field = {
-                ent["name"].upper(): ent["name"]
-                for ent in self.schema["entities"]
-                if "name" in ent
-            }
-            # Fallback/Append default if it's a known doc type for backwards compat or aliases
-            if doc_type in self.DEFAULT_MAPPINGS:
-                for ent_type, f_name in self.DEFAULT_MAPPINGS[doc_type].items():
-                    if ent_type not in self.entity_to_field:
-                        # Only add if it maps to an expected field in schema
-                        # OR if no schema expected fields (which is not this case)
-                        if f_name in self.expected_fields:
-                            self.entity_to_field[ent_type] = f_name
-                        elif not self.expected_fields:
-                             self.entity_to_field[ent_type] = f_name
         elif doc_type in self.DEFAULT_MAPPINGS:
             self.entity_to_field = self.DEFAULT_MAPPINGS[doc_type]
         else:

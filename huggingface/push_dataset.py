@@ -80,8 +80,21 @@ def generate_dataset_card(
         "cccd": "Căn cước công dân (CCCD)",
         "giay_ra_vien": "Giấy ra viện",
         "vehicle_registration": "Đăng ký xe",
+        "gplx": "Giấy phép lái xe (GPLX)",
+        "giay_khai_sinh": "Giấy khai sinh",
     }
-    doc_name = doc_names.get(doc_type, doc_type)
+    # Try loading from registry for any new doc types
+    try:
+        import yaml as _yaml
+        _reg_path = Path("registry/documents.yaml")
+        if _reg_path.exists():
+            with open(_reg_path, "r", encoding="utf-8") as _rf:
+                _reg = _yaml.safe_load(_rf)
+            for _dt, _info in _reg.get("documents", {}).items():
+                doc_names[_dt] = _info.get("name", _dt)
+    except Exception:
+        pass
+    doc_name = doc_names.get(doc_type, doc_type.replace('_', ' ').title())
 
     # Count samples
     train_count = 0

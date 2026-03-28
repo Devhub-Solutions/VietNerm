@@ -91,12 +91,25 @@ def generate_model_card(
             config = json.load(f)
             base_model = config.get("_name_or_path", base_model)
 
+    # Load doc names from registry if available, fallback to defaults
     doc_names = {
         "cccd": "Căn cước công dân (CCCD)",
         "giay_ra_vien": "Giấy ra viện",
         "vehicle_registration": "Đăng ký xe",
+        "gplx": "Giấy phép lái xe (GPLX)",
+        "giay_khai_sinh": "Giấy khai sinh",
     }
-    doc_name = doc_names.get(doc_type, doc_type)
+    try:
+        import yaml
+        registry_path = Path("registry/documents.yaml")
+        if registry_path.exists():
+            with open(registry_path, "r", encoding="utf-8") as rf:
+                reg = yaml.safe_load(rf)
+            for dt, info in reg.get("documents", {}).items():
+                doc_names[dt] = info.get("name", dt)
+    except Exception:
+        pass
+    doc_name = doc_names.get(doc_type, doc_type.replace('_', ' ').title())
 
     labels_str = "\n".join(f"- `{label}`" for label in labels if label != "O")
 
@@ -187,13 +200,23 @@ def push_model(
     with open(readme_path, "w", encoding="utf-8") as f:
         f.write(model_card)
 
-    # Upload all files
+    # Remove checkpoint directories before upload to save space
+    # Checkpoints contain optimizer.pt, scheduler.pt etc. that are not needed for inference
+    for ckpt_dir in model_path.glob("checkpoint-*"):
+        if ckpt_dir.is_dir():
+            import shutil
+            size_mb = sum(f.stat().st_size for f in ckpt_dir.rglob("*") if f.is_file()) / (1024 * 1024)
+            shutil.rmtree(ckpt_dir)
+            print(f"[INFO] Removed checkpoint: {ckpt_dir.name} ({size_mb:.0f} MB)")
+
+    # Upload all files (ignore any remaining checkpoint dirs and cache files)
     print(f"[INFO] Uploading model files from {model_path}...")
     api.upload_folder(
         folder_path=str(model_path),
         repo_id=repo_id,
         repo_type="model",
         token=token,
+        ignore_patterns=["checkpoint-*", "*.pt", "optimizer.*", "scheduler.*", "scaler.*", "rng_state.*"],
     )
 
     # Squash history: giữ chỉ version mới nhất, xóa tất cả commit cũ

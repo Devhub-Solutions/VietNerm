@@ -1,17 +1,35 @@
 """
-VietNerm NER classes for Vietnamese document entity extraction.
+VietNerm NER — Zero-code auto-discovery document entity extraction.
 
-Provides high-level API wrapping the inference pipeline:
-  - VietNerm: Generic extractor, auto-detect or specify document type
-  - CCCDNer: Shortcut for CCCD (Citizen ID Card) extraction
-  - GiayRaVienNer: Shortcut for Giấy ra viện (Hospital Discharge) extraction
-  - VehicleRegistrationNer: Shortcut for Đăng ký xe extraction
+The only class you need is ``VietNerm``.  It auto-discovers models from
+HuggingFace Hub, auto-derives schema mappings from the model's ``id2label``
+config, and auto-detects document types from OCR text.
 
-Models are loaded from HuggingFace Hub by default:
-  https://huggingface.co/{hf_username}/phobert-{doc_type}-ner
+**Zero-code workflow**:
+  1. Add entry to ``registry/documents.yaml``
+  2. Create ``templates/{doc_type}/schema.yaml`` + Jinja templates
+  3. Train & push model to HuggingFace Hub (CI/CD does this automatically)
+  4. SDK auto-discovers the new model — no code changes needed.
+
+Usage::
+
+    # Explicit doc type
+    >>> from vietnerm import VietNerm
+    >>> ner = VietNerm("cccd")
+    >>> result = ner.extract("Ho va ten: Nguyen Van A")
+
+    # Auto-detect doc type
+    >>> ner = VietNerm()
+    >>> result = ner.extract_auto(ocr_text)
+
+    # List all available models
+    >>> VietNerm.available_models()
+
+    # Dynamic accessor (backward compat)
+    >>> ner = VietNerm.for_doc("giay_khai_sinh")
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from ._inference.pipeline import NERPipeline
 from ._inference.schema_mapper import SchemaMapper
@@ -22,31 +40,44 @@ _DEFAULT_HF_USERNAME = "ngocthanhdoan"
 
 
 class VietNerm:
-    """Vietnamese document NER extractor.
+    """Vietnamese document NER extractor with full auto-discovery.
 
-    Wraps the inference pipeline and schema mapper for easy entity extraction
-    from Vietnamese administrative and medical documents.
+    This is the **only** class needed.  No shortcut subclasses required.
+    Models, schema mappings, and document types are all discovered
+    automatically at runtime.
 
-    Models are loaded from HuggingFace Hub by default. You can override
-    with a local path via ``model_path``.
+    **How auto-discovery works**:
+
+    1. ``doc_type`` → resolves to HF Hub repo ``{hf_username}/phobert-{doc_type}-ner``
+    2. Model's ``config.json`` contains ``id2label`` with BIO labels
+    3. ``SchemaMapper`` derives entity→field mapping from those labels
+    4. Extraction returns a dict of ``{field_name: value}``
 
     Args:
-        doc_type: Document type ('cccd', 'giay_ra_vien', 'vehicle_registration', etc.).
-            If None, must be specified per call.
-        model_path: HuggingFace Hub repo ID or local path to the trained model.
-            If None, resolved automatically as ``{hf_username}/phobert-{doc_type}-ner``.
-        hf_username: HuggingFace username/org that hosts the models.
-            Defaults to 'ngocthanhdoan'.
-        device: Device for inference ('cpu', 'cuda', 'auto').
-        max_length: Maximum token sequence length.
+        doc_type: Document type (e.g., 'cccd', 'giay_khai_sinh').
+            If None, use ``extract_auto()`` for auto-detection or pass
+            ``doc_type`` to each ``extract()`` call.
+        model_path: HuggingFace Hub repo ID or local path override.
+        hf_username: HuggingFace username/org hosting models.
+        device: Inference device ('cpu', 'cuda', 'auto').
+        max_length: Max token length. Capped at 256 (PhoBERT limit).
 
-    Example::
+    Examples::
 
-        >>> from vietnerm import VietNerm
-        >>> ner = VietNerm(doc_type="cccd")
-        >>> result = ner.extract("Họ và tên: Nguyễn Văn A\\nNgày sinh: 01/01/1990")
-        >>> print(result)
-        {"name": "Nguyễn Văn A", "date_of_birth": "01/01/1990", ...}
+        # Simple usage — just specify doc type
+        >>> ner = VietNerm("cccd")
+        >>> fields = ner.extract("So: 079203030140\\nHo va ten: NGUYEN VAN A")
+        >>> print(fields["id_number"])
+        '079203030140'
+
+        # Multi-doc usage — one instance, many doc types
+        >>> ner = VietNerm()
+        >>> cccd = ner.extract(cccd_text, doc_type="cccd")
+        >>> gks  = ner.extract(gks_text,  doc_type="giay_khai_sinh")
+
+        # Full auto — detect + extract
+        >>> result = VietNerm().extract_auto(unknown_text)
+        >>> print(result["doc_type"], result["fields"])
     """
 
     def __init__(
@@ -55,51 +86,62 @@ class VietNerm:
         model_path: Optional[str] = None,
         hf_username: str = _DEFAULT_HF_USERNAME,
         device: str = "auto",
-        max_length: int = 512,
+        max_length: int = 256,
     ) -> None:
         self.doc_type = doc_type
         self.hf_username = hf_username
         self.device = device
-        self.max_length = max_length
+        self.max_length = min(max_length, 256)
         self._pipelines: Dict[str, NERPipeline] = {}
         self._mappers: Dict[str, SchemaMapper] = {}
+        self._detector: Optional[DocTypeDetector] = None
 
-        if doc_type and model_path:
-            self._load_pipeline(doc_type, model_path)
-        elif doc_type:
-            resolved = self._resolve_model_path(doc_type)
-            self._load_pipeline(doc_type, resolved)
+        # Eagerly load if doc_type specified
+        if doc_type:
+            path = model_path or self._resolve_model_path(doc_type)
+            self._load_pipeline(doc_type, path)
 
-    def _resolve_model_path(self, doc_type: str) -> str:
-        """Resolve model to HuggingFace Hub ID.
+    # ------------------------------------------------------------------
+    # Factory methods
+    # ------------------------------------------------------------------
 
-        Naming convention: ``{hf_username}/phobert-{doc_type}-ner``
-        (dashes replace underscores in doc_type).
+    @classmethod
+    def for_doc(
+        cls,
+        doc_type: str,
+        model_path: Optional[str] = None,
+        hf_username: str = _DEFAULT_HF_USERNAME,
+        device: str = "auto",
+    ) -> "VietNerm":
+        """Create an extractor for a specific document type.
+
+        This is the recommended factory method — replaces the old shortcut
+        classes like ``CCCDNer``, ``GiayKhaiSinhNer``, etc.
 
         Args:
             doc_type: Document type identifier.
+            model_path: Optional model path override.
+            hf_username: HuggingFace username/org.
+            device: Inference device.
 
         Returns:
-            HuggingFace Hub repo ID string.
-        """
-        # Naming convention on HuggingFace Hub: phobert-{doc_type}-ner
-        # doc_type keeps underscores as-is (e.g. giay_ra_vien, vehicle_registration)
-        return f"{self.hf_username}/phobert-{doc_type}-ner"
+            Configured VietNerm instance.
 
-    def _load_pipeline(self, doc_type: str, model_path: str) -> None:
-        """Load pipeline and mapper for a document type.
+        Example::
 
-        Args:
-            doc_type: Document type identifier.
-            model_path: HuggingFace Hub ID or local model path.
+            >>> ner = VietNerm.for_doc("giay_khai_sinh")
+            >>> result = ner.extract(text)
         """
-        if doc_type not in self._pipelines:
-            self._pipelines[doc_type] = NERPipeline(
-                model_path=model_path,
-                device=self.device,
-                max_length=self.max_length,
-            )
-            self._mappers[doc_type] = SchemaMapper(doc_type=doc_type)
+        return cls(
+            doc_type=doc_type,
+            model_path=model_path,
+            hf_username=hf_username,
+            device=device,
+        )
+
+    # ------------------------------------------------------------------
+    # Core methods
+    # ------------------------------------------------------------------
 
     def extract(
         self,
@@ -111,29 +153,25 @@ class VietNerm:
 
         Args:
             text: Raw document text (e.g., OCR output).
-            doc_type: Document type. Uses instance doc_type if None.
+            doc_type: Document type. Uses instance default if None.
             validate: Whether to validate extracted entities.
 
         Returns:
             Dict mapping field names to extracted values.
+            Fields with no match are empty strings.
 
         Raises:
-            ValueError: If no doc_type is specified.
+            ValueError: If no doc_type specified.
         """
         dt = doc_type or self.doc_type
         if not dt:
             raise ValueError(
-                "doc_type must be specified either in constructor or extract() call"
+                "doc_type must be specified either in constructor or extract() call. "
+                "Use extract_auto() for automatic detection."
             )
-
-        if dt not in self._pipelines:
-            resolved = self._resolve_model_path(dt)
-            self._load_pipeline(dt, resolved)
-
-        raw_entities = self._pipelines[dt].predict(text)
-        return self._mappers[dt].map_entities(
-            raw_entities, validate=validate, clean=True
-        )
+        self._ensure_loaded(dt)
+        raw = self._pipelines[dt].predict(text)
+        return self._mappers[dt].map_entities(raw, validate=validate, clean=True)
 
     def extract_with_confidence(
         self,
@@ -146,24 +184,18 @@ class VietNerm:
         Args:
             text: Raw document text.
             doc_type: Document type.
-            validate: Whether to validate extracted entities.
+            validate: Whether to validate.
 
         Returns:
-            Dict mapping field names to {"value": str, "confidence": float}.
+            Dict mapping field names to ``{"value": str, "confidence": float}``.
         """
         dt = doc_type or self.doc_type
         if not dt:
-            raise ValueError(
-                "doc_type must be specified either in constructor or extract() call"
-            )
-
-        if dt not in self._pipelines:
-            resolved = self._resolve_model_path(dt)
-            self._load_pipeline(dt, resolved)
-
-        raw_entities = self._pipelines[dt].predict(text)
+            raise ValueError("doc_type required")
+        self._ensure_loaded(dt)
+        raw = self._pipelines[dt].predict(text)
         return self._mappers[dt].map_entities_with_confidence(
-            raw_entities, validate=validate, clean=True
+            raw, validate=validate, clean=True
         )
 
     def extract_raw(
@@ -178,82 +210,34 @@ class VietNerm:
             doc_type: Document type.
 
         Returns:
-            List of raw entity dicts with type, text, start, end, confidence.
+            List of entity dicts with type, text, start, end, confidence.
         """
         dt = doc_type or self.doc_type
         if not dt:
-            raise ValueError(
-                "doc_type must be specified either in constructor or extract() call"
-            )
-
-        if dt not in self._pipelines:
-            resolved = self._resolve_model_path(dt)
-            self._load_pipeline(dt, resolved)
-
+            raise ValueError("doc_type required")
+        self._ensure_loaded(dt)
         return self._pipelines[dt].predict(text)
-
-    def detect_doc_type(self, text: str) -> DetectionResult:
-        """Detect document type from raw OCR text without running NER.
-
-        Uses keyword-based scoring — fast, no model loading needed.
-
-        Args:
-            text: Raw OCR text from a Vietnamese document.
-
-        Returns:
-            DetectionResult with doc_type, confidence, and per-type scores.
-
-        Example::
-
-            >>> ner = VietNerm()
-            >>> result = ner.detect_doc_type("CĂN CƯỚC CÔNG DÂN\\nSố: 079203030140")
-            >>> print(result.doc_type)      # 'cccd'
-            >>> print(result.confidence)   # 0.92
-        """
-        if not hasattr(self, "_detector"):
-            self._detector = DocTypeDetector()
-        return self._detector.detect(text)
 
     def extract_auto(
         self,
         text: str,
         validate: bool = True,
-        detection_threshold: float = 0.40,
+        detection_threshold: float = 0.25,
     ) -> Dict[str, Any]:
         """Auto-detect document type then extract entities.
 
-        Combines ``detect_doc_type()`` + ``extract()`` in one call.
-        Returns both the detected type and extracted fields.
+        Combines detection + extraction in one call.
 
         Args:
-            text: Raw OCR text from a Vietnamese document.
-            validate: Whether to validate extracted entities.
-            detection_threshold: Minimum confidence to accept detection.
+            text: Raw OCR text.
+            validate: Whether to validate entities.
+            detection_threshold: Minimum confidence for detection.
 
         Returns:
-            Dict with keys:
-                - ``doc_type``: Detected document type (str or None)
-                - ``detection_confidence``: Confidence score of detection
-                - ``detection_scores``: Per-type scores dict
-                - ``fields``: Extracted entity fields (empty dict if detection failed)
-
-        Raises:
-            ValueError: If doc_type cannot be detected above threshold.
-
-        Example::
-
-            >>> ner = VietNerm()
-            >>> result = ner.extract_auto(ocr_text)
-            >>> print(result["doc_type"])              # 'cccd'
-            >>> print(result["detection_confidence"])  # 0.92
-            >>> print(result["fields"]["name"])        # 'Nguyễn Văn A'
+            Dict with keys: ``doc_type``, ``detection_confidence``,
+            ``detection_scores``, ``fields``.
         """
-        if not hasattr(self, "_detector"):
-            self._detector = DocTypeDetector(threshold=detection_threshold)
-        else:
-            self._detector.threshold = detection_threshold
-
-        detection = self._detector.detect(text)
+        detection = self.detect_doc_type(text, threshold=detection_threshold)
 
         result: Dict[str, Any] = {
             "doc_type": detection.doc_type,
@@ -262,120 +246,184 @@ class VietNerm:
             "fields": {},
         }
 
-        if not detection.is_confident or detection.doc_type is None:
-            return result
+        if detection.is_confident and detection.doc_type:
+            dt = detection.doc_type
+            self._ensure_loaded(dt)
+            raw = self._pipelines[dt].predict(text)
+            result["fields"] = self._mappers[dt].map_entities(
+                raw, validate=validate, clean=True
+            )
 
-        # Load pipeline for detected type if not already loaded
-        dt = detection.doc_type
-        if dt not in self._pipelines:
-            resolved = self._resolve_model_path(dt)
-            self._load_pipeline(dt, resolved)
-
-        result["fields"] = self._mappers[dt].map_entities(
-            self._pipelines[dt].predict(text),
-            validate=validate,
-            clean=True,
-        )
         return result
 
-
-class CCCDNer(VietNerm):
-    """Shortcut NER extractor for CCCD (Căn cước công dân) documents.
-
-    Loads model from: ``{hf_username}/phobert-cccd-ner``
-
-    Args:
-        model_path: Optional model path or Hub ID override.
-        hf_username: HuggingFace username/org.
-        device: Device for inference.
-
-    Example::
-
-        >>> from vietnerm import CCCDNer
-        >>> ner = CCCDNer()
-        >>> result = ner.extract("Số: 079203030140\\nHọ và tên: NGUYỄN VĂN A")
-        >>> print(result["name"])
-        'Nguyễn Văn A'
-    """
-
-    def __init__(
+    def detect_doc_type(
         self,
-        model_path: Optional[str] = None,
+        text: str,
+        threshold: float = 0.25,
+    ) -> DetectionResult:
+        """Detect document type from raw OCR text.
+
+        Uses TF-IDF + cosine similarity — fast, no model loading.
+
+        Args:
+            text: Raw OCR text.
+            threshold: Minimum confidence threshold.
+
+        Returns:
+            DetectionResult with doc_type, confidence, scores.
+        """
+        if self._detector is None:
+            self._detector = DocTypeDetector(threshold=threshold)
+        else:
+            self._detector.threshold = threshold
+        return self._detector.detect(text)
+
+    # ------------------------------------------------------------------
+    # Discovery methods
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def available_models(
+        cls,
         hf_username: str = _DEFAULT_HF_USERNAME,
-        device: str = "auto",
-    ) -> None:
-        super().__init__(
-            doc_type="cccd",
+    ) -> List[Dict[str, str]]:
+        """List all available NER models on HuggingFace Hub.
+
+        Discovers models matching ``{hf_username}/phobert-*-ner``.
+
+        Args:
+            hf_username: HuggingFace username/org.
+
+        Returns:
+            List of dicts with 'doc_type', 'repo_id', 'name'.
+
+        Example::
+
+            >>> for m in VietNerm.available_models():
+            ...     print(f"{m['doc_type']:25s} {m['repo_id']}")
+            cccd                      ngocthanhdoan/phobert-cccd-ner
+            giay_khai_sinh            ngocthanhdoan/phobert-giay_khai_sinh-ner
+            ...
+        """
+        try:
+            from huggingface_hub import list_models
+            results = []
+            for model in list_models(author=hf_username, search="phobert-ner"):
+                repo_id = model.id if hasattr(model, "id") else str(model)
+                name_part = repo_id.split("/")[-1]
+                if name_part.startswith("phobert-") and name_part.endswith("-ner"):
+                    doc_type = name_part[len("phobert-"):-len("-ner")]
+                    results.append({
+                        "doc_type": doc_type,
+                        "repo_id": repo_id,
+                        "name": doc_type.replace("_", " ").title(),
+                    })
+            return sorted(results, key=lambda x: x["doc_type"])
+        except Exception:
+            return []
+
+    @classmethod
+    def available_doc_types(
+        cls,
+        hf_username: str = _DEFAULT_HF_USERNAME,
+    ) -> List[str]:
+        """List available document type identifiers.
+
+        Returns:
+            Sorted list of doc_type strings.
+
+        Example::
+
+            >>> VietNerm.available_doc_types()
+            ['cccd', 'giay_khai_sinh', 'giay_ra_vien', 'gplx', 'vehicle_registration']
+        """
+        return [m["doc_type"] for m in cls.available_models(hf_username)]
+
+    def get_schema(self, doc_type: Optional[str] = None) -> Dict[str, str]:
+        """Get the field schema for a document type.
+
+        Loads the model if needed and returns the auto-discovered mapping.
+
+        Args:
+            doc_type: Document type. Uses instance default if None.
+
+        Returns:
+            Dict mapping entity types to field names.
+
+        Example::
+
+            >>> VietNerm("cccd").get_schema()
+            {'ID_NUMBER': 'id_number', 'FULL_NAME': 'full_name', ...}
+        """
+        dt = doc_type or self.doc_type
+        if not dt:
+            raise ValueError("doc_type required")
+        self._ensure_loaded(dt)
+        return dict(self._mappers[dt].entity_to_field)
+
+    def get_fields(self, doc_type: Optional[str] = None) -> List[str]:
+        """Get the list of extractable fields for a document type.
+
+        Args:
+            doc_type: Document type.
+
+        Returns:
+            Sorted list of field names.
+
+        Example::
+
+            >>> VietNerm("cccd").get_fields()
+            ['date_of_birth', 'date_of_expiry', 'full_name', ...]
+        """
+        dt = doc_type or self.doc_type
+        if not dt:
+            raise ValueError("doc_type required")
+        self._ensure_loaded(dt)
+        return sorted(self._mappers[dt].expected_fields)
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _resolve_model_path(self, doc_type: str) -> str:
+        """Resolve doc_type to HF Hub repo ID."""
+        return f"{self.hf_username}/phobert-{doc_type}-ner"
+
+    def _ensure_loaded(self, doc_type: str) -> None:
+        """Ensure pipeline + mapper are loaded for doc_type."""
+        if doc_type not in self._pipelines:
+            path = self._resolve_model_path(doc_type)
+            self._load_pipeline(doc_type, path)
+
+    def _load_pipeline(self, doc_type: str, model_path: str) -> None:
+        """Load NER pipeline and auto-configure schema mapper."""
+        if doc_type in self._pipelines:
+            return
+
+        pipeline = NERPipeline(
             model_path=model_path,
-            hf_username=hf_username,
-            device=device,
-            max_length=256,
+            device=self.device,
+            max_length=self.max_length,
+        )
+        self._pipelines[doc_type] = pipeline
+
+        # Auto-derive mapping from model's id2label — zero config needed
+        self._mappers[doc_type] = SchemaMapper(
+            doc_type=doc_type,
+            id2label=pipeline.id2label,
+            model_repo_id=model_path if "/" in model_path else None,
         )
 
+    # ------------------------------------------------------------------
+    # Backward compatibility aliases
+    # ------------------------------------------------------------------
 
-class GiayRaVienNer(VietNerm):
-    """Shortcut NER extractor for Giấy ra viện (Hospital Discharge) documents.
+    # Old method name kept as alias
+    list_available_models = available_models
 
-    Loads model from: ``{hf_username}/phobert-giay-ra-vien-ner``
-
-    Args:
-        model_path: Optional model path or Hub ID override.
-        hf_username: HuggingFace username/org.
-        device: Device for inference.
-
-    Example::
-
-        >>> from vietnerm import GiayRaVienNer
-        >>> ner = GiayRaVienNer()
-        >>> result = ner.extract("Họ tên người bệnh: Lê Thị Hằng\\nChẩn đoán: Viêm phổi")
-        >>> print(result["patient_name"])
-        'Lê Thị Hằng'
-    """
-
-    def __init__(
-        self,
-        model_path: Optional[str] = None,
-        hf_username: str = _DEFAULT_HF_USERNAME,
-        device: str = "auto",
-    ) -> None:
-        super().__init__(
-            doc_type="giay_ra_vien",
-            model_path=model_path,
-            hf_username=hf_username,
-            device=device,
-            max_length=512,
-        )
-
-
-class VehicleRegistrationNer(VietNerm):
-    """Shortcut NER extractor for Đăng ký xe (Vehicle Registration) documents.
-
-    Loads model from: ``{hf_username}/phobert-vehicle-registration-ner``
-
-    Args:
-        model_path: Optional model path or Hub ID override.
-        hf_username: HuggingFace username/org.
-        device: Device for inference.
-
-    Example::
-
-        >>> from vietnerm import VehicleRegistrationNer
-        >>> ner = VehicleRegistrationNer()
-        >>> result = ner.extract("Biển số: 51A-123.45\\nChủ xe: Nguyễn Văn A")
-        >>> print(result["plate_number"])
-        '51A-123.45'
-    """
-
-    def __init__(
-        self,
-        model_path: Optional[str] = None,
-        hf_username: str = _DEFAULT_HF_USERNAME,
-        device: str = "auto",
-    ) -> None:
-        super().__init__(
-            doc_type="vehicle_registration",
-            model_path=model_path,
-            hf_username=hf_username,
-            device=device,
-            max_length=512,
+    def __repr__(self) -> str:
+        loaded = list(self._pipelines.keys())
+        return (
+            f"VietNerm(doc_type={self.doc_type!r}, "
+            f"loaded={loaded}, hf={self.hf_username!r})"
         )

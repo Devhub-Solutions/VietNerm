@@ -48,13 +48,13 @@ _BOILERPLATE_LINES = {
 _STRONG_WEIGHT = 3.0
 _WEAK_WEIGHT = 1.0
 _EXCLUDE_PENALTY = -10.0
-_DEFAULT_THRESHOLD = 0.35
+_DEFAULT_THRESHOLD = 0.25
 
 # Minimum absolute TF-IDF cosine similarity for the best doc type
 _TFIDF_MIN_SCORE = 0.10
 # Minimum ratio of best_score / second_best_score to accept detection
 # (1.08 = best must be at least 8% higher than second best)
-_TFIDF_MIN_MARGIN = 1.08
+_TFIDF_MIN_MARGIN = 1.03
 
 
 # ---------------------------------------------------------------------------
