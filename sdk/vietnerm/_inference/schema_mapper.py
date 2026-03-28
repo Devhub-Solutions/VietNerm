@@ -23,12 +23,17 @@ class SchemaMapper:
         entity_to_field: Optional explicit mapping from entity type to output field.
     """
 
-    # Default entity-to-field mappings per document type
+    # Default entity-to-field mappings per document type.
+    # Keys are UPPERCASE entity types (as produced by _normalize_etype in postprocess.py).
+    # Supports both label schemes:
+    #   HF Hub: B-id_number      -> ID_NUMBER
+    #   Local:  B-ID_NUMBER_VALUE -> ID_NUMBER
     DEFAULT_MAPPINGS: Dict[str, Dict[str, str]] = {
         "cccd": {
             "ID_NUMBER": "id_number",
             "FULL_NAME": "name",
-            "DOB": "date_of_birth",
+            "DATE_OF_BIRTH": "date_of_birth",  # HF Hub scheme
+            "DOB": "date_of_birth",             # old local scheme alias
             "GENDER": "gender",
             "NATIONALITY": "nationality",
             "PLACE_OF_ORIGIN": "place_of_origin",
@@ -51,6 +56,16 @@ class SchemaMapper:
             "DIAGNOSIS": "diagnosis",
             "TREATMENT_METHOD": "treatment_method",
             "NOTES": "notes",
+        },
+        "vehicle_registration": {
+            "PLATE_NUMBER": "plate_number",
+            "OWNER_NAME": "owner_name",
+            "OWNER_ADDRESS": "owner_address",
+            "BRAND": "brand",
+            "VEHICLE_TYPE": "vehicle_type",
+            "ENGINE_NUMBER": "engine_number",
+            "CHASSIS_NUMBER": "chassis_number",
+            "MANUFACTURE_YEAR": "manufacture_year",
         },
     }
 

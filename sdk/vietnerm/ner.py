@@ -81,8 +81,9 @@ class VietNerm:
         Returns:
             HuggingFace Hub repo ID string.
         """
-        slug = doc_type.replace("_", "-")
-        return f"{self.hf_username}/phobert-{slug}-ner"
+        # Naming convention on HuggingFace Hub: phobert-{doc_type}-ner
+        # doc_type keeps underscores as-is (e.g. giay_ra_vien, vehicle_registration)
+        return f"{self.hf_username}/phobert-{doc_type}-ner"
 
     def _load_pipeline(self, doc_type: str, model_path: str) -> None:
         """Load pipeline and mapper for a document type.

@@ -19,6 +19,16 @@ GENDER_NORMALIZE: Dict[str, str] = {
 }
 
 
+def _normalize_etype(tag_name: str) -> str:
+    """Normalize entity type from tag name.
+
+    Supports two label schemes:
+      - New (HuggingFace Hub): 'full_name', 'date_of_birth'  -> 'FULL_NAME'
+      - Old (local training):  'full_name_VALUE'             -> 'FULL_NAME'
+    """
+    return tag_name.replace("_VALUE", "").upper()
+
+
 def merge_subtoken_predictions(
     tokens: List[str],
     labels: List[str],
@@ -27,7 +37,9 @@ def merge_subtoken_predictions(
 ) -> List[Dict]:
     """Merge B-/I- tagged tokens into entity spans.
 
-    Only extracts VALUE entities (ignores LABEL entities used for context).
+    Supports both label schemes:
+      - New (HuggingFace Hub): B-full_name, I-full_name
+      - Old (local training):  B-full_name_VALUE, I-full_name_VALUE
 
     Args:
         tokens: List of whitespace tokens.
@@ -45,8 +57,8 @@ def merge_subtoken_predictions(
         _, tok_start, tok_end = tokens_with_pos[i]
         conf = confidences[i] if i < len(confidences) else 0.0
 
-        # Only extract VALUE entities
-        if "_VALUE" not in label:
+        # Skip O labels
+        if label == "O":
             if current_ent:
                 entities.append(current_ent)
                 current_ent = None
@@ -60,7 +72,8 @@ def merge_subtoken_predictions(
             continue
 
         prefix, tag_name = parts
-        etype = tag_name.replace("_VALUE", "")
+        # Normalize entity type — supports both old (_VALUE) and new schemes
+        etype = _normalize_etype(tag_name)
 
         if prefix == "B":
             if current_ent:
@@ -148,7 +161,7 @@ def clean_entity_boundaries(entities: List[Dict]) -> List[Dict]:
         if t in seen_types:
             continue
 
-        # Normalize gender
+        # Normalize gender (type is already uppercase)
         if "GENDER" in t:
             text = GENDER_NORMALIZE.get(text.upper(), text)
 
