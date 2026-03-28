@@ -241,7 +241,7 @@ class PhoBERTNERTrainer:
                 "metric_for_best_model", "f1"
             ),
             logging_steps=self._config.get("logging_steps", 50),
-            fp16=torch.cuda.is_available(),
+            fp16=torch.cuda.is_available() and os.environ.get("CUDA_VISIBLE_DEVICES", "") != "",
             optim=self._config.get("optim", "adamw_torch"),
             warmup_steps=self._config.get("warmup_steps", 100),
         )
