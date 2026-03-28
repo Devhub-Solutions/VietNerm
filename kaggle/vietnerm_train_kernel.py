@@ -107,17 +107,19 @@ try:
         _torch_check.zeros(1).cuda()
         gpu_compatible = True
         print(f"GPU OK: {_torch_check.cuda.get_device_name(0)}, CUDA {_torch_check.version.cuda}")
+    else:
+        print("WARNING: CUDA not available in pre-installed PyTorch")
 except Exception as e:
     print(f"GPU not compatible with pre-installed PyTorch: {e}")
 
 if not gpu_compatible:
-    # P100 (sm_60) cần PyTorch build với CUDA 11.8
-    # Thử cài PyTorch cu118 — version cuối hỗ trợ sm_60
-    print("Reinstalling PyTorch with CUDA 11.8 (supports P100/sm_60)...")
+    # Kaggle hiện dùng Python 3.12 với CUDA 12.1 (cu121)
+    # T4/P100 đều được hỗ trợ bởi cu121
+    print("Reinstalling PyTorch with CUDA 12.1 (cu121)...")
     subprocess.run(
         [sys.executable, "-m", "pip", "install", "-q",
-         "torch==2.2.2+cu118", "torchvision==0.17.2+cu118",
-         "--index-url", "https://download.pytorch.org/whl/cu118"],
+         "torch==2.5.1+cu121", "torchvision==0.20.1+cu121",
+         "--index-url", "https://download.pytorch.org/whl/cu121"],
         check=False  # Nếu fail, sẽ fallback CPU
     )
     # Verify lại
