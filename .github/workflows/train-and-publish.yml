@@ -1,25 +1,10 @@
 ###############################################################################
 # VietNerm — CI/CD: Kaggle GPU Training → HuggingFace Hub
 ###############################################################################
-#
-# Pipeline:
-#   1. Push training kernel lên Kaggle (dùng Kaggle API)
-#   2. Poll kernel status cho đến khi complete
-#   3. Download output (trained models + results)
-#   4. Push models lên HuggingFace Hub
-#
-# Secrets cần setup trong GitHub repo Settings → Secrets:
-#   - KAGGLE_USERNAME   : Kaggle username
-#   - KAGGLE_KEY        : Kaggle API key
-#   - HF_TOKEN          : HuggingFace access token (write permission)
-#   - HF_USERNAME       : HuggingFace username/org (optional, default: ngocthanhdoan)
-#
-###############################################################################
 
 name: "Train on Kaggle & Publish to HuggingFace"
 
 on:
-  # Manual trigger với tùy chọn
   workflow_dispatch:
     inputs:
       doc_types:
@@ -53,7 +38,6 @@ on:
         default: false
         type: boolean
 
-  # Auto trigger khi push vào main (chỉ khi thay đổi training-related files)
   push:
     branches: [main]
     paths:
@@ -64,7 +48,6 @@ on:
       - "templates/**"
       - "kaggle/**"
 
-# Không chạy trùng — cancel job cũ nếu có push mới
 concurrency:
   group: kaggle-training-${{ github.ref }}
   cancel-in-progress: true
@@ -75,13 +58,10 @@ env:
   KERNEL_SLUG: "${{ secrets.KAGGLE_USERNAME }}/vietnerm-train-pipeline"
 
 jobs:
-  # ================================================================
-  # Job 1: Push kernel lên Kaggle & chờ training xong
-  # ================================================================
   train-on-kaggle:
     name: "🏋️ Train on Kaggle GPU"
     runs-on: ubuntu-latest
-    timeout-minutes: 180  # 3 giờ max (Kaggle GPU session ~9h)
+    timeout-minutes: 180
 
     outputs:
       kernel_status: ${{ steps.poll.outputs.status }}
@@ -98,35 +78,27 @@ jobs:
       - name: Install Kaggle CLI
         run: pip install kaggle
 
-      - name: Validate Kaggle credentials
+      - name: Prepare Kaggle kernel metadata
         run: |
-          kaggle config view
-          echo "Kaggle credentials OK"
-
-      # ── Prepare kernel metadata ──
-      - name: Prepare Kaggle kernel
-        run: |
-          KERNEL_DIR="kaggle"
-          
-          # Cập nhật kernel-metadata.json với đúng username
           python - <<'PYEOF'
           import json
+          import os
 
-          with open("kaggle/kernel-metadata.json", "r") as f:
+          meta_path = "kaggle/kernel-metadata.json"
+          with open(meta_path, "r") as f:
               meta = json.load(f)
 
-          meta["id"] = "${{ env.KERNEL_SLUG }}"
-
-          with open("kaggle/kernel-metadata.json", "w") as f:
+          meta["id"] = os.environ.get("KERNEL_SLUG", "")
+          
+          with open(meta_path, "w") as f:
               json.dump(meta, f, indent=2)
 
-          print(f"Kernel ID: {meta['id']}")
-          print(f"GPU: {meta.get('enable_gpu', False)}")
-          print(f"Internet: {meta.get('enable_internet', False)}")
+          print(f"Kernel ID set to: {meta['id']}")
           PYEOF
+        env:
+          KERNEL_SLUG: ${{ env.KERNEL_SLUG }}
 
-      # ── Inject env vars vào kernel script ──
-      - name: Configure training parameters
+      - name: Configure training parameters & Inject Env
         env:
           INPUT_HF_TOKEN: ${{ secrets.HF_TOKEN }}
           INPUT_HF_USERNAME: ${{ secrets.HF_USERNAME || 'ngocthanhdoan' }}
@@ -138,54 +110,44 @@ jobs:
           INPUT_HF_PRIVATE: ${{ inputs.hf_private && 'true' || 'false' }}
           INPUT_GITHUB_BRANCH: ${{ github.ref_name }}
         run: |
-          # Tạo env override file bằng echo (mỗi dòng 1 lần, tránh heredoc YAML issues)
-          echo 'import os' > /tmp/_env_override.py
-          echo "os.environ[\"HF_TOKEN\"] = \"${INPUT_HF_TOKEN}\"" >> /tmp/_env_override.py
-          echo "os.environ[\"HF_USERNAME\"] = \"${INPUT_HF_USERNAME}\"" >> /tmp/_env_override.py
-          echo "os.environ[\"DOC_TYPES\"] = \"${INPUT_DOC_TYPES}\"" >> /tmp/_env_override.py
-          echo "os.environ[\"DATASET_SIZE\"] = \"${INPUT_DATASET_SIZE}\"" >> /tmp/_env_override.py
-          echo "os.environ[\"TRAIN_EPOCHS\"] = \"${INPUT_TRAIN_EPOCHS}\"" >> /tmp/_env_override.py
-          echo "os.environ[\"BATCH_SIZE\"] = \"${INPUT_BATCH_SIZE}\"" >> /tmp/_env_override.py
-          echo "os.environ[\"MIN_F1\"] = \"${INPUT_MIN_F1}\"" >> /tmp/_env_override.py
-          echo "os.environ[\"HF_PRIVATE\"] = \"${INPUT_HF_PRIVATE}\"" >> /tmp/_env_override.py
-          echo "os.environ[\"GITHUB_BRANCH\"] = \"${INPUT_GITHUB_BRANCH}\"" >> /tmp/_env_override.py
+          # Create env override file
+          cat <<EOF > /tmp/_env_override.py
+          import os
+          os.environ["HF_TOKEN"] = "${INPUT_HF_TOKEN}"
+          os.environ["HF_USERNAME"] = "${INPUT_HF_USERNAME}"
+          os.environ["DOC_TYPES"] = "${INPUT_DOC_TYPES}"
+          os.environ["DATASET_SIZE"] = "${INPUT_DATASET_SIZE}"
+          os.environ["TRAIN_EPOCHS"] = "${INPUT_TRAIN_EPOCHS}"
+          os.environ["BATCH_SIZE"] = "${INPUT_BATCH_SIZE}"
+          os.environ["MIN_F1"] = "${INPUT_MIN_F1}"
+          os.environ["HF_PRIVATE"] = "${INPUT_HF_PRIVATE}"
+          os.environ["GITHUB_BRANCH"] = "${INPUT_GITHUB_BRANCH}"
+          EOF
 
-          echo "=== Generated env override ==="
-          cat /tmp/_env_override.py
-
-          # Prepend env overrides vào kernel script
+          # Prepend to kernel script
           cat /tmp/_env_override.py kaggle/vietnerm_train_kernel.py > kaggle/_final_kernel.py
           mv kaggle/_final_kernel.py kaggle/vietnerm_train_kernel.py
-
-          echo ""
-          echo "=== Training Config ==="
+          
+          echo "=== Training Config Injected ==="
           echo "Doc Types:    ${INPUT_DOC_TYPES:-all}"
           echo "Dataset Size: ${INPUT_DATASET_SIZE}"
-          echo "Epochs:       ${INPUT_TRAIN_EPOCHS}"
-          echo "Batch Size:   ${INPUT_BATCH_SIZE}"
-          echo "Min F1:       ${INPUT_MIN_F1}"
 
-      # ── Push kernel lên Kaggle ──
       - name: Push kernel to Kaggle
         run: |
           echo "Pushing kernel to Kaggle..."
           kaggle kernels push -p kaggle/
           echo "Kernel pushed: ${{ env.KERNEL_SLUG }}"
 
-      # ── Poll kernel status ──
       - name: Poll kernel status
         id: poll
         run: |
           echo "Waiting for Kaggle kernel to complete..."
-          echo "Kernel: ${{ env.KERNEL_SLUG }}"
-
-          POLL_INTERVAL=60   # Kiểm tra mỗi 60 giây
-          MAX_POLLS=150      # Max 150 * 60s = 2.5 giờ
+          POLL_INTERVAL=60
+          MAX_POLLS=150
           POLL_COUNT=0
 
           while [ $POLL_COUNT -lt $MAX_POLLS ]; do
             POLL_COUNT=$((POLL_COUNT + 1))
-            
             STATUS=$(kaggle kernels status "${{ env.KERNEL_SLUG }}" 2>&1 || true)
             echo "[$(date '+%H:%M:%S')] Poll #${POLL_COUNT}: ${STATUS}"
             
@@ -196,16 +158,8 @@ jobs:
             elif echo "$STATUS" | grep -qi "error\|failed\|cancelled"; then
               echo "Kernel failed!"
               echo "status=failed" >> "$GITHUB_OUTPUT"
-              
-              # Lấy log để debug
-              echo "=== Kernel Output Log ==="
-              kaggle kernels output "${{ env.KERNEL_SLUG }}" -p /tmp/kaggle-output 2>/dev/null || true
-              if [ -f /tmp/kaggle-output/*.log ]; then
-                tail -100 /tmp/kaggle-output/*.log
-              fi
               exit 1
             fi
-            
             sleep $POLL_INTERVAL
           done
 
@@ -213,25 +167,13 @@ jobs:
           echo "status=timeout" >> "$GITHUB_OUTPUT"
           exit 1
 
-      # ── Download training output ──
-      - name: Download kernel output
+      - name: Download & Upload artifacts
         if: steps.poll.outputs.status == 'complete'
         run: |
           mkdir -p kaggle-output
           kaggle kernels output "${{ env.KERNEL_SLUG }}" -p kaggle-output/
-          
-          echo "=== Downloaded Files ==="
-          find kaggle-output/ -type f | head -50
-          
-          # Hiển thị training results
-          if [ -f kaggle-output/train_results.json ]; then
-            echo ""
-            echo "=== Training Results ==="
-            python -m json.tool kaggle-output/train_results.json
-          fi
-
-      # ── Upload artifacts ──
-      - name: Upload training artifacts
+        
+      - name: Upload to Actions
         if: steps.poll.outputs.status == 'complete'
         uses: actions/upload-artifact@v4
         with:
@@ -239,15 +181,11 @@ jobs:
           path: kaggle-output/
           retention-days: 30
 
-  # ================================================================
-  # Job 2: Verify & Report
-  # ================================================================
   report:
     name: "📊 Training Report"
     runs-on: ubuntu-latest
     needs: train-on-kaggle
     if: always()
-
     steps:
       - name: Download artifacts
         if: needs.train-on-kaggle.outputs.kernel_status == 'complete'
@@ -259,18 +197,16 @@ jobs:
       - name: Generate summary
         run: |
           echo "## 🇻🇳 VietNerm Training Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
+          
           if [ "${{ needs.train-on-kaggle.outputs.kernel_status }}" != "complete" ]; then
-            echo "❌ **Kernel Status:** ${{ needs.train-on-kaggle.outputs.kernel_status }}" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Check the Kaggle kernel logs for details." >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Kernel Failed or Timed Out**" >> $GITHUB_STEP_SUMMARY
             exit 0
           fi
 
           if [ -f training-output/train_results.json ]; then
-            python3 - << 'PYEOF'
+            python3 << 'PYEOF'
           import json
+          import os
 
           with open("training-output/train_results.json") as f:
               data = json.load(f)
@@ -281,28 +217,19 @@ jobs:
           summary = []
           summary.append(f"**Total Time:** {data.get('total_minutes', '?')} minutes")
           summary.append(f"**Dataset Size:** {config.get('dataset_size', '?'):,}")
-          summary.append(f"**Epochs:** {config.get('train_epochs', '?')}")
-          summary.append(f"**Batch Size:** {config.get('batch_size', '?')}")
-          summary.append("")
-          summary.append("| Doc Type | Status | F1 | Time | Model URL |")
-          summary.append("|----------|--------|----|------|-----------|")
+          summary.append("| Doc Type | Status | F1 | Model URL |")
+          summary.append("|----------|--------|----|-----------|")
 
           for doc_type, r in results.items():
-              icon = {"published": "✅", "low_f1": "⚠️"}.get(r["status"], "❌")
+              icon = "✅" if r["status"] == "published" else "❌"
               f1 = f"{r.get('f1', 0):.4f}" if r.get("f1") else "—"
-              time_m = f"{r.get('time_minutes', 0)}m"
               url = r.get("model_url", "—")
-              if url != "—":
-                  url = f"[Link]({url})"
-              summary.append(f"| {icon} {doc_type} | {r['status']} | {f1} | {time_m} | {url} |")
+              if url != "—": url = f"[Link]({url})"
+              summary.append(f"| {icon} {doc_type} | {r['status']} | {f1} | {url} |")
 
-          published = sum(1 for r in results.values() if r["status"] == "published")
-          summary.append("")
-          summary.append(f"**Result:** {published}/{len(results)} models published")
-
-          with open("$GITHUB_STEP_SUMMARY", "a") as f:
-              f.write("\n".join(summary))
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as f:
+              f.write("\n" + "\n".join(summary))
           PYEOF
           else
-            echo "⚠️ No training results file found." >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ No results found." >> $GITHUB_STEP_SUMMARY
           fi
