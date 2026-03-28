@@ -180,39 +180,33 @@ class PhoBERTNERTrainer:
             label2id=self._label2id,
         )
 
-        # Build HF datasets with explicit Features to avoid ClassLabel issues
+        # Build HF datasets with sliding window tokenization
         print("==> Tokenizing datasets...")
-        features = Features({
-            "tokens": Sequence(Value("string")),
-            "ner_tags": Sequence(Value("string")),
-        })
 
         stride = self._config.get("stride", 128)
-        fn_kwargs = {
-            "tokenizer": self._tokenizer,
-            "label2id": self._label2id,
-            "max_length": self._max_length,
-            "stride": stride,
-        }
         print(f"    Sliding window: max_length={self._max_length}, stride={stride}")
 
-        train_hf = Dataset.from_list(
-            [{"tokens": s["tokens"], "ner_tags": s["ner_tags"]}
-             for s in actual_train],
-            features=features,
+        # NOTE: We do NOT use Dataset.map() for sliding window because map(batched=True)
+        # requires output row count == input row count. Sliding window produces MORE rows
+        # than input (1 long doc → N windows), causing PyArrow ArrowInvalid error.
+        # Solution: build the windowed dataset directly with Dataset.from_list().
+        train_windows = _build_windowed_dataset(
+            actual_train, self._tokenizer, self._label2id,
+            self._max_length, stride,
         )
-        valid_hf = Dataset.from_list(
-            [{"tokens": s["tokens"], "ner_tags": s["ner_tags"]}
-             for s in valid_samples],
-            features=features,
+        valid_windows = _build_windowed_dataset(
+            valid_samples, self._tokenizer, self._label2id,
+            self._max_length, stride,
         )
 
-        train_tok = train_hf.map(
-            _tokenize_and_align_labels, fn_kwargs=fn_kwargs, batched=True
-        )
-        valid_tok = valid_hf.map(
-            _tokenize_and_align_labels, fn_kwargs=fn_kwargs, batched=True
-        )
+        tok_features = Features({
+            "input_ids": Sequence(Value("int32")),
+            "attention_mask": Sequence(Value("int8")),
+            "labels": Sequence(Value("int32")),
+        })
+        train_tok = Dataset.from_list(train_windows, features=tok_features)
+        valid_tok = Dataset.from_list(valid_windows, features=tok_features)
+        print(f"    Windows: train={len(train_tok)}, valid={len(valid_tok)}")
 
         # Validate label IDs before training
         print("==> Validating label IDs...")
@@ -433,6 +427,57 @@ def _make_windows(
         start += step
 
     return windows
+
+
+def _build_windowed_dataset(
+    samples: List[Dict],
+    tokenizer: Any,
+    label2id: Dict[str, int],
+    max_length: int,
+    stride: int,
+) -> List[Dict[str, List[int]]]:
+    """Convert word-level samples to a flat list of windowed token dicts.
+
+    Unlike Dataset.map(), this function can freely produce more output rows
+    than input rows (N windows per long document). The result is a plain
+    Python list suitable for Dataset.from_list().
+
+    Args:
+        samples: List of {'tokens': [...], 'ner_tags': [...]} dicts.
+        tokenizer: PhoBERT tokenizer.
+        label2id: Label string → int mapping.
+        max_length: Max tokens per window (must be ≤ 258 for PhoBERT).
+        stride: Overlap in subword tokens between consecutive windows.
+
+    Returns:
+        List of {'input_ids': [...], 'attention_mask': [...], 'labels': [...]}
+        dicts, one per window.
+    """
+    num_labels = len(label2id)
+    id_to_label_keys = list(label2id.keys())
+    result: List[Dict[str, List[int]]] = []
+
+    for sample in samples:
+        tokens = sample["tokens"]
+        ner_tags = sample.get("ner_tags", sample.get("labels", []))
+
+        subword_ids, subword_labels = _encode_sample_to_subwords(
+            tokens, ner_tags, tokenizer, label2id, id_to_label_keys, num_labels
+        )
+        if not subword_ids:
+            continue
+
+        windows = _make_windows(
+            subword_ids, subword_labels, tokenizer, max_length, stride
+        )
+        for input_ids, mask, labels in windows:
+            result.append({
+                "input_ids": input_ids,
+                "attention_mask": mask,
+                "labels": labels,
+            })
+
+    return result
 
 
 def _tokenize_and_align_labels(
