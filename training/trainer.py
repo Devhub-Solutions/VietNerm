@@ -221,6 +221,12 @@ class PhoBERTNERTrainer:
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
+        # Xác định device: nếu CUDA_VISIBLE_DEVICES="" thì force CPU
+        # (được set bởi kernel khi GPU không tương thích, ví dụ P100 sm_60)
+        _cuda_disabled = os.environ.get("CUDA_VISIBLE_DEVICES", None) == ""
+        _use_gpu = torch.cuda.is_available() and not _cuda_disabled
+        print(f"    Trainer device: {'GPU (fp16)' if _use_gpu else 'CPU (no_cuda=True)'}")
+
         args = TrainingArguments(
             str(output_dir),
             learning_rate=self._config.get("learning_rate", 2e-5),
@@ -241,7 +247,8 @@ class PhoBERTNERTrainer:
                 "metric_for_best_model", "f1"
             ),
             logging_steps=self._config.get("logging_steps", 50),
-            fp16=torch.cuda.is_available() and os.environ.get("CUDA_VISIBLE_DEVICES", "") != "",
+            fp16=_use_gpu,
+            no_cuda=_cuda_disabled,
             optim=self._config.get("optim", "adamw_torch"),
             warmup_steps=self._config.get("warmup_steps", 100),
         )

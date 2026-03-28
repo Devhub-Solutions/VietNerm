@@ -114,19 +114,26 @@ except subprocess.TimeoutExpired:
     print("    WARNING: nvidia-smi timed out — assuming no GPU")
 
 # Double-check bằng torch nếu gpu_available=True
+# QUAN TRỌNG: Không dùng torch.zeros(1).cuda() để test vì nó không trigger
+# CUDA kernel thực sự — chỉ copy tensor, không phát hiện sm incompatibility.
+# Thay vào đó: chạy một matmul nhỏ để force CUDA kernel execution.
 if gpu_available:
     try:
         import torch as _t
         if _t.cuda.is_available():
-            # Thử một phép tính nhỏ để chắc chắn không crash
-            _t.zeros(1).cuda()
-            print(f"    PyTorch CUDA test OK: {_t.cuda.get_device_name(0)}, CUDA {_t.version.cuda}")
+            # Chạy matmul nhỏ để trigger CUDA kernel thực sự
+            # Nếu sm không tương thích, sẽ crash ở đây thay vì giữa training
+            _a = _t.randn(32, 32, device='cuda')
+            _b = _t.randn(32, 32, device='cuda')
+            _c = _t.mm(_a, _b)  # Force CUDA kernel execution
+            del _a, _b, _c
+            print(f"    PyTorch CUDA kernel test OK: {_t.cuda.get_device_name(0)}, CUDA {_t.version.cuda}")
         else:
             print("    WARNING: torch.cuda.is_available() = False — falling back to CPU")
             gpu_available = False
             os.environ["CUDA_VISIBLE_DEVICES"] = ""
     except Exception as e:
-        print(f"    WARNING: CUDA test failed ({e}) — falling back to CPU")
+        print(f"    WARNING: CUDA kernel test failed ({e}) — falling back to CPU")
         gpu_available = False
         os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
