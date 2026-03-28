@@ -179,10 +179,28 @@ os.chdir(PROJECT_DIR)
 sys.path.insert(0, PROJECT_DIR)
 
 # Install dependencies
+# NOTE: When using torch==2.3.1 (P100 fallback), we must pin transformers<=4.51.3.
+# transformers>=4.52.0 added a security check (CVE-2025-32434) that blocks
+# torch.load on torch < 2.6, causing training to fail at model loading.
+# transformers 4.51.3 is the last version without this restriction.
 print("\nInstalling project dependencies...")
+_transformers_pin = "transformers==4.51.3" if not gpu_available or (gpu_available and 'P100' in gpu_name) else "transformers"
+# More precise: check if we installed torch 2.3.1 (sm_60 path)
+import importlib.util as _ilu
+_torch_spec = _ilu.find_spec('torch')
+if _torch_spec:
+    import torch as _torch_check
+    _torch_ver = tuple(int(x) for x in _torch_check.__version__.split('.')[:2])
+    if _torch_ver < (2, 6):
+        _transformers_pin = "transformers==4.51.3"
+        print(f"    Pinning transformers==4.51.3 (torch {_torch_check.__version__} < 2.6, CVE-2025-32434 workaround)")
+    else:
+        _transformers_pin = "transformers"
+else:
+    _transformers_pin = "transformers==4.51.3"
 subprocess.run(
     [sys.executable, "-m", "pip", "install", "-q",
-     "transformers", "datasets", "seqeval", "huggingface_hub",
+     _transformers_pin, "datasets", "seqeval", "huggingface_hub",
      "pyyaml", "Jinja2", "numpy", "accelerate"],
     check=True
 )
