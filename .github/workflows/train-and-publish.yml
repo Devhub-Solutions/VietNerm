@@ -127,37 +127,43 @@ jobs:
 
       # ── Inject env vars vào kernel script ──
       - name: Configure training parameters
+        env:
+          INPUT_HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          INPUT_HF_USERNAME: ${{ secrets.HF_USERNAME || 'ngocthanhdoan' }}
+          INPUT_DOC_TYPES: ${{ inputs.doc_types || '' }}
+          INPUT_DATASET_SIZE: ${{ inputs.dataset_size || '2000' }}
+          INPUT_TRAIN_EPOCHS: ${{ inputs.train_epochs || '5' }}
+          INPUT_BATCH_SIZE: ${{ inputs.batch_size || '16' }}
+          INPUT_MIN_F1: ${{ inputs.min_f1 || '0.2' }}
+          INPUT_HF_PRIVATE: ${{ inputs.hf_private && 'true' || 'false' }}
+          INPUT_GITHUB_BRANCH: ${{ github.ref_name }}
         run: |
-          # Tạo env override file (không có indentation thừa)
-          cat > /tmp/_env_override.py <<EOF
-import os
-# CI/CD injected environment variables
-os.environ["HF_TOKEN"] = "${{ secrets.HF_TOKEN }}"
-os.environ["HF_USERNAME"] = "${{ secrets.HF_USERNAME || 'ngocthanhdoan' }}"
-os.environ["DOC_TYPES"] = "${{ inputs.doc_types || '' }}"
-os.environ["DATASET_SIZE"] = "${{ inputs.dataset_size || '2000' }}"
-os.environ["TRAIN_EPOCHS"] = "${{ inputs.train_epochs || '5' }}"
-os.environ["BATCH_SIZE"] = "${{ inputs.batch_size || '16' }}"
-os.environ["MIN_F1"] = "${{ inputs.min_f1 || '0.2' }}"
-os.environ["HF_PRIVATE"] = "${{ inputs.hf_private && 'true' || 'false' }}"
-os.environ["GITHUB_BRANCH"] = "${{ github.ref_name }}"
-EOF
+          # Tạo env override file bằng echo (mỗi dòng 1 lần, tránh heredoc YAML issues)
+          echo 'import os' > /tmp/_env_override.py
+          echo "os.environ[\"HF_TOKEN\"] = \"${INPUT_HF_TOKEN}\"" >> /tmp/_env_override.py
+          echo "os.environ[\"HF_USERNAME\"] = \"${INPUT_HF_USERNAME}\"" >> /tmp/_env_override.py
+          echo "os.environ[\"DOC_TYPES\"] = \"${INPUT_DOC_TYPES}\"" >> /tmp/_env_override.py
+          echo "os.environ[\"DATASET_SIZE\"] = \"${INPUT_DATASET_SIZE}\"" >> /tmp/_env_override.py
+          echo "os.environ[\"TRAIN_EPOCHS\"] = \"${INPUT_TRAIN_EPOCHS}\"" >> /tmp/_env_override.py
+          echo "os.environ[\"BATCH_SIZE\"] = \"${INPUT_BATCH_SIZE}\"" >> /tmp/_env_override.py
+          echo "os.environ[\"MIN_F1\"] = \"${INPUT_MIN_F1}\"" >> /tmp/_env_override.py
+          echo "os.environ[\"HF_PRIVATE\"] = \"${INPUT_HF_PRIVATE}\"" >> /tmp/_env_override.py
+          echo "os.environ[\"GITHUB_BRANCH\"] = \"${INPUT_GITHUB_BRANCH}\"" >> /tmp/_env_override.py
+
+          echo "=== Generated env override ==="
+          cat /tmp/_env_override.py
 
           # Prepend env overrides vào kernel script
           cat /tmp/_env_override.py kaggle/vietnerm_train_kernel.py > kaggle/_final_kernel.py
           mv kaggle/_final_kernel.py kaggle/vietnerm_train_kernel.py
 
-          # Verify: hiện 5 dòng đầu (secrets sẽ bị mask bởi GitHub)
-          echo "=== First 5 lines of kernel script ==="
-          head -5 kaggle/vietnerm_train_kernel.py
-
           echo ""
           echo "=== Training Config ==="
-          echo "Doc Types:    ${{ inputs.doc_types || 'all' }}"
-          echo "Dataset Size: ${{ inputs.dataset_size || '2000' }}"
-          echo "Epochs:       ${{ inputs.train_epochs || '5' }}"
-          echo "Batch Size:   ${{ inputs.batch_size || '16' }}"
-          echo "Min F1:       ${{ inputs.min_f1 || '0.2' }}"
+          echo "Doc Types:    ${INPUT_DOC_TYPES:-all}"
+          echo "Dataset Size: ${INPUT_DATASET_SIZE}"
+          echo "Epochs:       ${INPUT_TRAIN_EPOCHS}"
+          echo "Batch Size:   ${INPUT_BATCH_SIZE}"
+          echo "Min F1:       ${INPUT_MIN_F1}"
 
       # ── Push kernel lên Kaggle ──
       - name: Push kernel to Kaggle
