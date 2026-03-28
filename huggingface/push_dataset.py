@@ -127,6 +127,32 @@ def generate_dataset_card(
     )
 
 
+def _squash_repo_history(
+    repo_id: str,
+    repo_type: str = "dataset",
+    token: Optional[str] = None,
+) -> None:
+    """Squash all commits into one, keeping only the latest version."""
+    from huggingface_hub import HfApi  # noqa: PLC0415
+    api = HfApi(token=token)
+    try:
+        commits_before = api.list_repo_commits(repo_id, repo_type=repo_type, token=token)
+        n_before = len(commits_before)
+        if n_before <= 1:
+            print(f"[INFO] History already clean ({n_before} commit) — skip squash")
+            return
+        print(f"[INFO] Squashing {n_before} commits into 1...")
+        api.super_squash_history(
+            repo_id=repo_id,
+            repo_type=repo_type,
+            commit_message="chore: squash history — keep latest version only",
+            token=token,
+        )
+        print(f"[INFO] History squashed: {n_before} commits → 1")
+    except Exception as e:
+        print(f"[WARNING] Could not squash history for {repo_id}: {e}")
+
+
 def push_dataset(
     doc_type: str,
     repo_id: str,
@@ -181,6 +207,10 @@ def push_dataset(
         repo_type="dataset",
         token=token,
     )
+
+    # Squash history: giữ chỉ version mới nhất, xóa tất cả commit cũ
+    print("[INFO] Squashing dataset repo history...")
+    _squash_repo_history(repo_id, repo_type="dataset", token=token)
 
     url = f"https://huggingface.co/datasets/{repo_id}"
     print(f"[SUCCESS] Dataset published to: {url}")

@@ -16,6 +16,42 @@ from typing import Optional
 from huggingface_hub import HfApi, create_repo
 
 
+def squash_repo_history(
+    repo_id: str,
+    repo_type: str = "model",
+    token: Optional[str] = None,
+) -> None:
+    """Squash all commits into one, keeping only the latest version.
+
+    Uses HuggingFace Hub's super_squash_history API to collapse the entire
+    commit history into a single commit. This reduces repo size and removes
+    all intermediate checkpoints / large binary diffs from history.
+
+    Args:
+        repo_id: HuggingFace repository ID.
+        repo_type: 'model' or 'dataset'.
+        token: HuggingFace API token.
+    """
+    api = HfApi(token=token)
+    try:
+        commits_before = api.list_repo_commits(repo_id, repo_type=repo_type, token=token)
+        n_before = len(commits_before)
+        if n_before <= 1:
+            print(f"[INFO] History already clean ({n_before} commit) — skip squash")
+            return
+        print(f"[INFO] Squashing {n_before} commits into 1...")
+        api.super_squash_history(
+            repo_id=repo_id,
+            repo_type=repo_type,
+            commit_message="chore: squash history — keep latest version only",
+            token=token,
+        )
+        print(f"[INFO] History squashed: {n_before} commits → 1")
+    except Exception as e:
+        # Non-fatal: squash failure should not block the publish
+        print(f"[WARNING] Could not squash history for {repo_id}: {e}")
+
+
 def generate_model_card(
     doc_type: str,
     repo_id: str,
@@ -159,6 +195,10 @@ def push_model(
         repo_type="model",
         token=token,
     )
+
+    # Squash history: giữ chỉ version mới nhất, xóa tất cả commit cũ
+    print("[INFO] Squashing repo history...")
+    squash_repo_history(repo_id, repo_type="model", token=token)
 
     url = f"https://huggingface.co/{repo_id}"
     print(f"[SUCCESS] Model published to: {url}")
