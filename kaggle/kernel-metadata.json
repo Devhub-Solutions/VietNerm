@@ -1,0 +1,14 @@
+{
+  "id": "INSERT_KAGGLE_USERNAME/vietnerm-train-pipeline",
+  "title": "VietNerm Train Pipeline",
+  "code_file": "vietnerm_train_kernel.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "keywords": ["ner", "phobert", "vietnamese", "vietnerm"],
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": []
+}
