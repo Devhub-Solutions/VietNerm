@@ -95,10 +95,16 @@ sys.path.insert(0, PROJECT_DIR)
 # Install dependencies
 print("\nInstalling dependencies...")
 subprocess.run(
+    [sys.executable, "-m", "pip", "install", "-q",
+     "torch==2.1.2", "torchvision==0.16.2",
+     "--index-url", "https://download.pytorch.org/whl/cu121"],
+    check=True
+)
+subprocess.run(
     [sys.executable, "-m", "pip", "install", "-q", "-r", "requirements.txt", "accelerate"],
     check=True
 )
-print("Dependencies installed.")
+
 
 # ============================================================
 # 3. DISCOVER DOC TYPES
