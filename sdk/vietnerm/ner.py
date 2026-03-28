@@ -11,10 +11,11 @@ Models are loaded from HuggingFace Hub by default:
   https://huggingface.co/{hf_username}/phobert-{doc_type}-ner
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from ._inference.pipeline import NERPipeline
 from ._inference.schema_mapper import SchemaMapper
+from .detector import DocTypeDetector, DetectionResult
 
 # Default HuggingFace username that hosts the trained models
 _DEFAULT_HF_USERNAME = "ngocthanhdoan"
@@ -190,6 +191,92 @@ class VietNerm:
             self._load_pipeline(dt, resolved)
 
         return self._pipelines[dt].predict(text)
+
+    def detect_doc_type(self, text: str) -> DetectionResult:
+        """Detect document type from raw OCR text without running NER.
+
+        Uses keyword-based scoring — fast, no model loading needed.
+
+        Args:
+            text: Raw OCR text from a Vietnamese document.
+
+        Returns:
+            DetectionResult with doc_type, confidence, and per-type scores.
+
+        Example::
+
+            >>> ner = VietNerm()
+            >>> result = ner.detect_doc_type("CĂN CƯỚC CÔNG DÂN\\nSố: 079203030140")
+            >>> print(result.doc_type)      # 'cccd'
+            >>> print(result.confidence)   # 0.92
+        """
+        if not hasattr(self, "_detector"):
+            self._detector = DocTypeDetector()
+        return self._detector.detect(text)
+
+    def extract_auto(
+        self,
+        text: str,
+        validate: bool = True,
+        detection_threshold: float = 0.40,
+    ) -> Dict[str, Any]:
+        """Auto-detect document type then extract entities.
+
+        Combines ``detect_doc_type()`` + ``extract()`` in one call.
+        Returns both the detected type and extracted fields.
+
+        Args:
+            text: Raw OCR text from a Vietnamese document.
+            validate: Whether to validate extracted entities.
+            detection_threshold: Minimum confidence to accept detection.
+
+        Returns:
+            Dict with keys:
+                - ``doc_type``: Detected document type (str or None)
+                - ``detection_confidence``: Confidence score of detection
+                - ``detection_scores``: Per-type scores dict
+                - ``fields``: Extracted entity fields (empty dict if detection failed)
+
+        Raises:
+            ValueError: If doc_type cannot be detected above threshold.
+
+        Example::
+
+            >>> ner = VietNerm()
+            >>> result = ner.extract_auto(ocr_text)
+            >>> print(result["doc_type"])              # 'cccd'
+            >>> print(result["detection_confidence"])  # 0.92
+            >>> print(result["fields"]["name"])        # 'Nguyễn Văn A'
+        """
+        if not hasattr(self, "_detector"):
+            self._detector = DocTypeDetector(threshold=detection_threshold)
+        else:
+            self._detector.threshold = detection_threshold
+
+        detection = self._detector.detect(text)
+
+        result: Dict[str, Any] = {
+            "doc_type": detection.doc_type,
+            "detection_confidence": detection.confidence,
+            "detection_scores": detection.scores,
+            "fields": {},
+        }
+
+        if not detection.is_confident or detection.doc_type is None:
+            return result
+
+        # Load pipeline for detected type if not already loaded
+        dt = detection.doc_type
+        if dt not in self._pipelines:
+            resolved = self._resolve_model_path(dt)
+            self._load_pipeline(dt, resolved)
+
+        result["fields"] = self._mappers[dt].map_entities(
+            self._pipelines[dt].predict(text),
+            validate=validate,
+            clean=True,
+        )
+        return result
 
 
 class CCCDNer(VietNerm):

@@ -25,6 +25,7 @@ Using custom HuggingFace model::
 """
 
 from .ner import VietNerm, CCCDNer, GiayRaVienNer, VehicleRegistrationNer
+from .detector import DocTypeDetector, DetectionResult, DocTypeRule
 
 __version__ = "0.1.0"
 __author__ = "VietNerm Team"
@@ -34,5 +35,8 @@ __all__ = [
     "CCCDNer",
     "GiayRaVienNer",
     "VehicleRegistrationNer",
+    "DocTypeDetector",
+    "DetectionResult",
+    "DocTypeRule",
     "__version__",
 ]
