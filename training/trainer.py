@@ -227,8 +227,13 @@ class PhoBERTNERTrainer:
         _use_gpu = torch.cuda.is_available() and not _cuda_disabled
         print(f"    Trainer device: {'GPU (fp16)' if _use_gpu else 'CPU (no_cuda=True)'}")
 
+        # Disable wandb/tensorboard — no API keys available in CI/CD
+        os.environ["WANDB_DISABLED"] = "true"
+        os.environ["WANDB_MODE"] = "disabled"
+
         args = TrainingArguments(
             str(output_dir),
+            report_to="none",
             learning_rate=self._config.get("learning_rate", 2e-5),
             per_device_train_batch_size=self._config.get(
                 "per_device_train_batch_size", 16
