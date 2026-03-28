@@ -128,26 +128,30 @@ jobs:
       # ── Inject env vars vào kernel script ──
       - name: Configure training parameters
         run: |
-          # Tạo env block ở đầu kernel script
-          cat > kaggle/_env_override.py << 'PYEOF'
-          import os
-          # CI/CD injected environment variables
-          os.environ["HF_TOKEN"] = "${{ secrets.HF_TOKEN }}"
-          os.environ["HF_USERNAME"] = "${{ inputs.hf_private && secrets.HF_USERNAME || secrets.HF_USERNAME || 'ngocthanhdoan' }}"
-          os.environ["DOC_TYPES"] = "${{ inputs.doc_types || '' }}"
-          os.environ["DATASET_SIZE"] = "${{ inputs.dataset_size || '2000' }}"
-          os.environ["TRAIN_EPOCHS"] = "${{ inputs.train_epochs || '5' }}"
-          os.environ["BATCH_SIZE"] = "${{ inputs.batch_size || '16' }}"
-          os.environ["MIN_F1"] = "${{ inputs.min_f1 || '0.2' }}"
-          os.environ["HF_PRIVATE"] = "${{ inputs.hf_private && 'true' || 'false' }}"
-          os.environ["GITHUB_BRANCH"] = "${{ github.ref_name }}"
-          PYEOF
+          # Tạo env override file (không có indentation thừa)
+          cat > /tmp/_env_override.py <<EOF
+import os
+# CI/CD injected environment variables
+os.environ["HF_TOKEN"] = "${{ secrets.HF_TOKEN }}"
+os.environ["HF_USERNAME"] = "${{ secrets.HF_USERNAME || 'ngocthanhdoan' }}"
+os.environ["DOC_TYPES"] = "${{ inputs.doc_types || '' }}"
+os.environ["DATASET_SIZE"] = "${{ inputs.dataset_size || '2000' }}"
+os.environ["TRAIN_EPOCHS"] = "${{ inputs.train_epochs || '5' }}"
+os.environ["BATCH_SIZE"] = "${{ inputs.batch_size || '16' }}"
+os.environ["MIN_F1"] = "${{ inputs.min_f1 || '0.2' }}"
+os.environ["HF_PRIVATE"] = "${{ inputs.hf_private && 'true' || 'false' }}"
+os.environ["GITHUB_BRANCH"] = "${{ github.ref_name }}"
+EOF
 
           # Prepend env overrides vào kernel script
-          cat kaggle/_env_override.py kaggle/vietnerm_train_kernel.py > kaggle/_final_kernel.py
+          cat /tmp/_env_override.py kaggle/vietnerm_train_kernel.py > kaggle/_final_kernel.py
           mv kaggle/_final_kernel.py kaggle/vietnerm_train_kernel.py
-          rm kaggle/_env_override.py
 
+          # Verify: hiện 5 dòng đầu (secrets sẽ bị mask bởi GitHub)
+          echo "=== First 5 lines of kernel script ==="
+          head -5 kaggle/vietnerm_train_kernel.py
+
+          echo ""
           echo "=== Training Config ==="
           echo "Doc Types:    ${{ inputs.doc_types || 'all' }}"
           echo "Dataset Size: ${{ inputs.dataset_size || '2000' }}"

@@ -62,6 +62,12 @@ print("VietNerm — Kaggle Training Pipeline")
 print("=" * 60)
 print(f"Thời gian: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 print(f"Python: {sys.version}")
+print(f"HF_TOKEN: {'SET (' + HF_TOKEN[:4] + '...)' if HF_TOKEN else 'NOT SET — models will NOT be pushed to HuggingFace!'}")
+print(f"HF_USERNAME: {HF_USERNAME}")
+print(f"DOC_TYPES: {DOC_TYPES_STR or 'all'}")
+print(f"DATASET_SIZE: {DATASET_SIZE}")
+print(f"TRAIN_EPOCHS: {TRAIN_EPOCHS}")
+print(f"BATCH_SIZE: {BATCH_SIZE}")
 
 # Kiểm tra GPU
 try:
