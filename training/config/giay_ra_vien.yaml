@@ -1,8 +1,8 @@
 model_name: "vinai/phobert-base"
-max_length: 512
+max_length: 256
 num_train_epochs: 7
 learning_rate: 2.0e-5
-# batch_size=8 (thay vì 16) để tránh OOM với max_length=512 trên P100 16GB
+# batch_size=8 để an toàn với P100 16GB (PhoBERT max_length=256)
 # 512 tokens × 8 batch × 768 hidden × fp16 ≈ 3GB activations/layer — an toàn
 per_device_train_batch_size: 8
 per_device_eval_batch_size: 8
