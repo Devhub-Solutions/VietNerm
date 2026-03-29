@@ -18,6 +18,57 @@ GENDER_NORMALIZE: Dict[str, str] = {
     "NAM": "Nam",
 }
 
+_BLEED_CUT_MARKERS: Tuple[str, ...] = (
+    "hạng/class", "hang/class", "class:", "hạng:",
+    "ngày cấp", "date of issue", "ngày hết hạn", "expiration date",
+    "họ tên", "full name", "quốc tịch", "nationality",
+    "giới tính", "gender", "quê quán", "nơi thường trú",
+)
+
+
+def _trim_bleed_text(entity_type: str, text: str) -> str:
+    """Trim cross-field label bleed commonly caused by OCR line merging."""
+    t = text.strip()
+    lower = t.lower()
+
+    # Remove leading field labels accidentally merged into value
+    leading_noise = [
+        r"^(họ tên(?:/full name)?\s*:?)\s+",
+        r"^(nơi cư trú(?:/address)?\s*:?)\s+",
+        r"^(quê quán\s*:?)\s+",
+        r"^(chẩn đoán\s*:?)\s+",
+    ]
+    for pattern in leading_noise:
+        t = re.sub(pattern, "", t, flags=re.IGNORECASE)
+    lower = t.lower()
+
+    # ADDRESS-specific repair: keep both address chunks when CLASS marker is injected
+    # Example: "... Bình Hạng/Class:, B X. Kiến Đức, T. Lâm Đồng"
+    if "ADDRESS" in entity_type:
+        t = re.sub(
+            r"(hạng\s*/\s*class|hang\s*/\s*class|class|hạng)\s*:?\s*[,;\-]?\s*[A-Z0-9]{1,3}\b",
+            " ",
+            t,
+            flags=re.IGNORECASE,
+        )
+        t = re.sub(r"\s{2,}", " ", t).strip(" ,.;:-")
+        lower = t.lower()
+
+    # For free-text fields frequently contaminated by next label, cut at marker
+    if any(k in entity_type for k in ("ADDRESS", "NOTES", "DIAGNOSIS", "TREATMENT_METHOD")):
+        cut_markers = [
+            m for m in _BLEED_CUT_MARKERS
+            if not ("ADDRESS" in entity_type and m in {"hạng/class", "hang/class", "class:", "hạng:"})
+        ]
+        cut_positions = [
+            lower.find(marker) for marker in cut_markers
+            if lower.find(marker) > 0
+        ]
+        if cut_positions:
+            t = t[: min(cut_positions)].strip(" ,.;:-")
+
+    return t.strip()
+
 
 def _normalize_etype(tag_name: str) -> str:
     """Normalize entity type from tag name.
@@ -156,7 +207,7 @@ def clean_entity_boundaries(entities: List[Dict]) -> List[Dict]:
 
     for ent in entities:
         t = ent["type"]
-        text = ent["text"].strip()
+        text = _trim_bleed_text(t, ent["text"])
 
         if t in seen_types:
             # Special case: Merge multiple address or notes regions

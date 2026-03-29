@@ -1,0 +1,17 @@
+CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+Độc lập - Tự do - Hạnh phúc
+CĂN CƯỚC CÔNG DÂN / IDENTITY CARD
+Số định danh cá nhân/Personal identification number
+{{ id_number }}
+Họ, chữ đệm và tên khai sinh / Full name:
+{{ full_name }}
+Ngày, tháng, năm sinh / Date of birth
+{{ date_of_birth }}
+Giới tính/Sex: {{ gender }}
+Quốc tịch/Nationality:
+{{ nationality }}
+Quê quán / Place of origin:
+{{ place_of_origin }}
+Nơi thường trú / Place of residence
+{{ place_of_residence }}
+Có giá trị đến / Date of expiry: {{ date_of_expiry }}

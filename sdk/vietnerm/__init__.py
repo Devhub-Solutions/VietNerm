@@ -35,7 +35,6 @@ Factory method::
 from .ner import VietNerm
 from .detector import DocTypeDetector, DetectionResult, DocTypeRule
 from .registry import ModelRegistry
-
 __version__ = "0.2.3"
 __author__ = "VietNerm Team"
 
