@@ -1,0 +1,23 @@
+1, PHƯƠNG TIỆN
+(VEHICLE)
+Biển đăng ký: {{ plate_number }}
+Số quản lý: {{ id_number }}
+Loại phương tiện: (Type) {{ vehicle_type }}
+Nhãn hiệu: (Mark) {{ brand }}
+Số loại: (Model code) {{ model_code }}
+Số máy: (Engine Number) {{ engine_number }}
+Thành Số khung: (Chassis Number) {{ chassis_number }}
+Năm, Nước sản xuất: {{ manufacture_year }}, {{ manufacture_country }}
+Có hiệu lực đến hết ngày {{ expiry_date }}
+2. THÔNG SỐ KỸ THUẬT (SPECIFICATIONS)
+Công thức bánh xe: 4x2
+Vết bánh xe: 1475/1460 (mm)
+Kích thước bao: (Overall Dimension) 4410 x 1700 x 1475 (mm)
+Chiều dài cơ sở: (Wheelbase) 2550 (mm)
+Khối lượng bản thân: (Kerb mass) 1058 (kg)
+Số người cho phép chờ: 5 chỗ ngồi, 0 chỗ đứng, 0 chỗ nằm
+Loại nhiên liệu: (Type of Fuel Used) Xăng
+Số sê-ri: (No.) KC-4003297
+{{ registration_date }}
+{{ owner_name }}
+{{ owner_address }}

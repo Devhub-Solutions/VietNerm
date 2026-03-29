@@ -1,0 +1,21 @@
+CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+Độc lập Tự do - Hạnh phúc
+GIAY PHẾP LÁI XE/DRIVER/SLICENSE
+Số/No: {{ id_number }}
+Họ tên/Full name:
+{{ full_name }}
+Ngày sinh/Date of Birth:
+{{ date_of_birth }}
+PHERSLICENSE GIẤY PHÉP LÁ XE
+Quốc tịch/Nationality
+{{ nationality }}
+GLAYPH
+VIỆT NAM NƠI CƯ TRÚ/ADDRESS
+{{ address }}
+DRVNTP. Hồ Chí Minh, ngàyldate {{ issue_date }}
+KT. GIÁM ĐỐC
+PHÓ GIÁM ĐỐC
+Hạng/Class: {{ class }} lambanggap.net
+AOI
+Có giá trị đến/Expires: {{ expiry_date }}
+Burhoa An

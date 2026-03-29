@@ -1,0 +1,22 @@
+{{ dept_mgmt }}
+Cộng Hòa Xã Hội Chủ Nghĩa Việt Nam
+MS: 01/BV-01
+{{ hospital_name }}
+Độc lập - Tự do - Hạnh phúc
+Số lưu trữ: {{ medical_code }}
+{{ department }}
+Mã Y tế: {{ medical_code }}
+GIẤY RA VIỆN
+Họ tên người bệnh: {{ patient_name }}
+- Ngày/ tháng/ năm sinh: {{ patient_dob }}
+- Dân tộc: {{ patient_ethnicity }}
+Nghề nghiệp: {{ patient_occupation }}
+Mã số BHXH/Thẻ BHYT số: {{ bhxh_code }}
+- Địa chỉ: {{ patient_address }}
+- Vào viện lúc: {{ admission_date }}
+- Ra viện lúc: {{ discharge_date }}
+- Chẩn đoán: {{ diagnosis }}
+Phương pháp điều trị: {{ treatment_method }}
+- Ghi chú: {{ notes }}
+TRƯỜNG KHOA
+BÁC SĨ ĐIỀU TRị

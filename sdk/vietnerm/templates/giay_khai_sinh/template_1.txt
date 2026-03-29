@@ -1,0 +1,22 @@
+CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+03010872011
+Độc lập - Tự do - Hạnh phúc
+Quyền số: {{ id_number }}
+GIẤY KHAI SINH
+(BẢN CHÍNH)
+Ho và tên: {{ full_name }}
+Giới tính: {{ gender }}
+Ngày, tháng, năm sinh: {{ date_of_birth }}
+bằng chữ: {{ dob_text }}
+Nơi sinh: {{ place_of_birth }}
+Dân tộc: {{ ethnicity }}
+Quốc tịch: {{ nationality }}
+Họ và tên cha: {{ father_name }}
+Họ và tên mẹ: {{ mother_name }}
+Nơi đăng ký: {{ registration_place }}
+Ngày, tháng, năm đăng ký: {{ registration_date }}
+Ghi chú: 
+NGƯỜI THỰC HIỆN
+NGƯỜI KÝ GIẤY KHAI SINH
+(Ký, ghi rõ họ tên)
+(Ký, ghi rõ họ tên, chức vụ và đóng dấu)

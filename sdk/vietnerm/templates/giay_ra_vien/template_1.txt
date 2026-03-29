@@ -1,0 +1,27 @@
+SỞ Y TẾ QUẢNG NAM
+BỆNH VIỆN ĐA KHOA VĨNH ĐỨC THỊ
+Độc lập - Tự do - Hanh phúc trị
+MS: 01/BV-01
+Trong {{ department }} trị
+Số lưu trữ: {{ medical_code }}/GRV
+Số điện thoại: 02.35 2 214 249
+Mã y tế: 49159.24058220
+giáy ra viện s
+Trong Họ tên người bệnh: {{ patient_name }}
+Ngày sinh: {{ patient_dob }}
+- Dăn tộc: {{ patient_ethnicity }}
+Giới tính: {{ patient_gender }}
+MÃ SỐ BHXH/THè BHYT số: {{ bhxh_code }}
+Nghề nghiệp: {{ patient_occupation }}
+Xã Địa chi: {{ patient_address }}
+Vào viện lúc: {{ admission_date }}
+Thế Ra viện lúc: {{ discharge_date }}
+Chấn đoán: {{ diagnosis }}
+Thuật thuật Phưong pháp điều trị: {{ treatment_method }}
+- Ghi chũ: E
+Tỉ Uống thuốc theo đơn thị
+{{ notes }}
+KHÔ GIÁM ĐỐC
+Trưởng khoa
+{{ hospital_name }}
+BSCK II. TRƯƠNG QUANG NHÂN THỊ
