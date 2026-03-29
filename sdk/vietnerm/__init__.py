@@ -36,7 +36,7 @@ from .ner import VietNerm
 from .detector import DocTypeDetector, DetectionResult, DocTypeRule
 from .registry import ModelRegistry
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 __author__ = "VietNerm Team"
 
 __all__ = [
