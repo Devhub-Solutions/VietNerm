@@ -1,74 +1,47 @@
 ###############################################################################
-# VietNerm — CI/CD: Kaggle GPU Training → HuggingFace Hub
+# VietNerm — CI/CD: Build & Publish SDK to PyPI
+#
+# Triggers:
+#   - Push tag matching v* (e.g., v0.1.0, v1.2.3)
+#   - Manual dispatch (for testing / emergency publish)
+#
+# Required secrets:
+#   PYPI_API_TOKEN  — PyPI API token (scope: project "vietnerm")
+#                     Create at: https://pypi.org/manage/account/token/
+#
+# Release workflow:
+#   1. Bump version in sdk/vietnerm/__init__.py (__version__ = "x.y.z")
+#   2. Commit: git commit -m "chore: bump version to x.y.z"
+#   3. Tag:    git tag v x.y.z && git push origin vx.y.z
+#   4. This workflow runs automatically and publishes to PyPI
 ###############################################################################
-
-name: "Train on Kaggle & Publish to HuggingFace"
+name: "Publish SDK to PyPI"
 
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
-      doc_types:
-        description: "Doc types to train (comma-separated, empty = all)"
-        required: false
-        default: ""
-        type: string
-      dataset_size:
-        description: "Number of synthetic samples to generate"
-        required: false
-        default: "2000"
-        type: string
-      train_epochs:
-        description: "Number of training epochs"
-        required: false
-        default: "5"
-        type: string
-      batch_size:
-        description: "Training batch size"
-        required: false
-        default: "16"
-        type: string
-      min_f1:
-        description: "Minimum F1 score to publish"
-        required: false
-        default: "0.2"
-        type: string
-      hf_private:
-        description: "Create private HuggingFace repos"
+      dry_run:
+        description: "Dry run (build only, do not publish)"
         required: false
         default: false
         type: boolean
 
-  push:
-    branches: [main]
-    paths:
-      - "training/**"
-      - "synthetic/**"
-      - "huggingface/**"
-      - "registry/**"
-      - "templates/**"
-      - "kaggle/**"
-
 concurrency:
-  group: kaggle-training-${{ github.ref }}
-  cancel-in-progress: true
-
-env:
-  KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
-  KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
-  KERNEL_SLUG: "${{ secrets.KAGGLE_USERNAME }}/vietnerm-train-pipeline"
+  group: pypi-publish-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   # ================================================================
-  # Job 1: Train on Kaggle GPU
+  # Job 1: Build distribution packages
   # ================================================================
-  train-on-kaggle:
-    name: "🏋️ Train on Kaggle GPU"
+  build:
+    name: "📦 Build SDK"
     runs-on: ubuntu-latest
-    timeout-minutes: 180
-
     outputs:
-      kernel_status: ${{ steps.poll.outputs.status }}
-
+      version: ${{ steps.get_version.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -78,208 +51,187 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Kaggle CLI
-        run: pip install kaggle
+      - name: Install build tools
+        run: pip install build twine
 
-      - name: Validate Kaggle credentials
+      - name: Get version from __init__.py
+        id: get_version
         run: |
-          if [ -z "$KAGGLE_USERNAME" ] || [ -z "$KAGGLE_KEY" ]; then
-            echo "ERROR: KAGGLE_USERNAME or KAGGLE_KEY secret is not set!"
-            echo "Please add these secrets in: Settings → Secrets and variables → Actions"
+          VERSION=$(python3 -c "
+          import re
+          content = open('sdk/vietnerm/__init__.py').read()
+          m = re.search(r'__version__\s*=\s*[\"\']([\d.]+[^\"\']*)[\"\']]', content)
+          if not m:
+              m = re.search(r'__version__\s*=\s*[\"\']([\w.+-]+)[\"\']]', content)
+          print(m.group(1) if m else 'unknown')
+          " 2>/dev/null || python3 -c "
+          import ast, sys
+          tree = ast.parse(open('sdk/vietnerm/__init__.py').read())
+          for node in ast.walk(tree):
+              if isinstance(node, ast.Assign):
+                  for t in node.targets:
+                      if isinstance(t, ast.Name) and t.id == '__version__':
+                          print(ast.literal_eval(node.value))
+                          sys.exit(0)
+          print('unknown')
+          ")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Building version: ${VERSION}"
+
+      - name: Validate tag matches version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          VERSION="${{ steps.get_version.outputs.version }}"
+          if [ "$TAG" != "$VERSION" ]; then
+            echo "ERROR: Tag v${TAG} does not match __version__ = '${VERSION}'"
+            echo "Please update sdk/vietnerm/__init__.py before tagging."
             exit 1
           fi
-          echo "Kaggle credentials: OK (user=$KAGGLE_USERNAME)"
+          echo "Tag v${TAG} matches version ${VERSION} ✓"
 
-      - name: Prepare Kaggle kernel metadata
+      - name: Build wheel and sdist
+        working-directory: sdk
+        run: python -m build --outdir ../dist/
+
+      - name: Verify distribution
         run: |
-          python3 - <<'PYEOF'
-          import json
-          import os
+          echo "=== Distribution files ==="
+          ls -lh dist/
+          echo ""
+          echo "=== Twine check ==="
+          twine check dist/*
 
-          meta_path = "kaggle/kernel-metadata.json"
-          with open(meta_path, "r") as f:
-              meta = json.load(f)
-
-          meta["id"] = os.environ.get("KERNEL_SLUG", "")
-
-          with open(meta_path, "w") as f:
-              json.dump(meta, f, indent=2)
-
-          print(f"Kernel ID set to: {meta['id']}")
-          print(f"GPU: {meta.get('enable_gpu', False)}")
-          print(f"Internet: {meta.get('enable_internet', False)}")
-          PYEOF
-        env:
-          KERNEL_SLUG: ${{ env.KERNEL_SLUG }}
-
-      # ── Inject env vars vào kernel script ──
-      - name: Configure training parameters
-        run: |
-          # Tạo env block ở đầu kernel script
-          cat > kaggle/_env_override.py << 'PYEOF'
-          import os
-          # CI/CD injected environment variables
-          os.environ["HF_TOKEN"] = "${{ secrets.HF_TOKEN }}"
-          os.environ["HF_USERNAME"] = "${{ secrets.HF_USERNAME || 'ngocthanhdoan' }}"
-          os.environ["DOC_TYPES"] = "${{ inputs.doc_types || '' }}"
-          os.environ["DATASET_SIZE"] = "${{ inputs.dataset_size || '2000' }}"
-          os.environ["TRAIN_EPOCHS"] = "${{ inputs.train_epochs || '5' }}"
-          os.environ["BATCH_SIZE"] = "${{ inputs.batch_size || '16' }}"
-          os.environ["MIN_F1"] = "${{ inputs.min_f1 || '0.2' }}"
-          os.environ["HF_PRIVATE"] = "${{ inputs.hf_private && 'true' || 'false' }}"
-          os.environ["GITHUB_BRANCH"] = "${{ github.ref_name }}"
-          PYEOF
-
-          # Prepend env overrides vào kernel script
-          cat kaggle/_env_override.py kaggle/vietnerm_train_kernel.py > kaggle/_final_kernel.py
-          mv kaggle/_final_kernel.py kaggle/vietnerm_train_kernel.py
-          rm kaggle/_env_override.py
-
-          echo "=== Training Config ==="
-          echo "Doc Types:    ${{ inputs.doc_types || 'all' }}"
-          echo "Dataset Size: ${{ inputs.dataset_size || '2000' }}"
-          echo "Epochs:       ${{ inputs.train_epochs || '5' }}"
-          echo "Batch Size:   ${{ inputs.batch_size || '16' }}"
-          echo "Min F1:       ${{ inputs.min_f1 || '0.2' }}"
-
-      # ── Push kernel lên Kaggle ──
-      - name: Push kernel to Kaggle
-        run: |
-          echo "Pushing kernel to Kaggle..."
-          kaggle kernels push -p kaggle/
-          echo "Kernel pushed: ${{ env.KERNEL_SLUG }}"
-
-      # ── Poll kernel status ──
-      - name: Poll kernel status
-        id: poll
-        run: |
-          echo "Waiting for Kaggle kernel to complete..."
-          echo "Kernel: ${{ env.KERNEL_SLUG }}"
-
-          POLL_INTERVAL=60   # Kiểm tra mỗi 60 giây
-          MAX_POLLS=150      # Max 150 * 60s = 2.5 giờ
-          POLL_COUNT=0
-
-          while [ $POLL_COUNT -lt $MAX_POLLS ]; do
-            POLL_COUNT=$((POLL_COUNT + 1))
-
-            STATUS=$(kaggle kernels status "${{ env.KERNEL_SLUG }}" 2>&1 || true)
-            echo "[$(date '+%H:%M:%S')] Poll #${POLL_COUNT}: ${STATUS}"
-
-            if echo "$STATUS" | grep -qi "complete"; then
-              echo "Kernel completed successfully!"
-              echo "status=complete" >> "$GITHUB_OUTPUT"
-              exit 0
-            elif echo "$STATUS" | grep -qi "error\|failed\|cancelled"; then
-              echo "Kernel failed!"
-              echo "status=failed" >> "$GITHUB_OUTPUT"
-
-              # Lấy log để debug
-              echo "=== Kernel Output Log ==="
-              kaggle kernels output "${{ env.KERNEL_SLUG }}" -p /tmp/kaggle-output 2>/dev/null || true
-              if ls /tmp/kaggle-output/*.log 2>/dev/null; then
-                tail -100 /tmp/kaggle-output/*.log
-              fi
-              exit 1
-            fi
-            sleep $POLL_INTERVAL
-          done
-
-          echo "Timeout waiting for kernel!"
-          echo "status=timeout" >> "$GITHUB_OUTPUT"
-          exit 1
-
-      # ── Download kernel output ──
-      - name: Download kernel output
-        if: steps.poll.outputs.status == 'complete'
-        run: |
-          mkdir -p kaggle-output
-          kaggle kernels output "${{ env.KERNEL_SLUG }}" -p kaggle-output/
-
-          echo "=== Downloaded Files ==="
-          find kaggle-output/ -type f | head -50
-
-          # Hiển thị training results
-          if [ -f kaggle-output/train_results.json ]; then
-            echo ""
-            echo "=== Training Results ==="
-            python3 -m json.tool kaggle-output/train_results.json
-          fi
-
-      # ── Upload artifacts ──
-      - name: Upload training artifacts
-        if: steps.poll.outputs.status == 'complete'
+      - name: Upload distribution artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: training-output
-          path: kaggle-output/
-          retention-days: 30
+          name: dist-packages
+          path: dist/
+          retention-days: 7
 
   # ================================================================
-  # Job 2: Verify & Report
+  # Job 2: Publish to PyPI
   # ================================================================
-  report:
-    name: "📊 Training Report"
+  publish:
+    name: "🚀 Publish to PyPI"
     runs-on: ubuntu-latest
-    needs: train-on-kaggle
-    if: always()
-
+    needs: build
+    # Only publish on real tag pushes, not manual dry-run
+    if: startsWith(github.ref, 'refs/tags/') && github.event.inputs.dry_run != 'true'
+    environment:
+      name: pypi
+      url: https://pypi.org/project/vietnerm/
+    permissions:
+      id-token: write  # Required for OIDC trusted publishing
     steps:
-      - name: Download artifacts
-        if: needs.train-on-kaggle.outputs.kernel_status == 'complete'
+      - name: Download distribution artifacts
         uses: actions/download-artifact@v4
         with:
-          name: training-output
-          path: training-output/
+          name: dist-packages
+          path: dist/
 
-      - name: Generate summary
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # Option A: OIDC Trusted Publishing (recommended, no token needed)
+          # Configure at: https://pypi.org/manage/project/vietnerm/settings/publishing/
+          # Option B: API Token (fallback)
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          skip-existing: false
+          verbose: true
+
+  # ================================================================
+  # Job 3: Create GitHub Release
+  # ================================================================
+  release:
+    name: "📋 Create GitHub Release"
+    runs-on: ubuntu-latest
+    needs: [build, publish]
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download distribution artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "VietNerm SDK ${{ needs.build.outputs.version }}"
+          body: |
+            ## VietNerm SDK v${{ needs.build.outputs.version }}
+
+            ### Install
+            ```bash
+            pip install vietnerm==${{ needs.build.outputs.version }}
+            ```
+
+            ### Quick Start
+            ```python
+            from vietnerm import CCCDNer
+
+            ner = CCCDNer()
+            result = ner.extract("Họ và tên: Nguyễn Văn A\nNgày sinh: 01/01/1990")
+            print(result)
+            ```
+
+            ### Models on HuggingFace Hub
+            - [phobert-cccd-ner](https://huggingface.co/ngocthanhdoan/phobert-cccd-ner)
+            - [phobert-giay-ra-vien-ner](https://huggingface.co/ngocthanhdoan/phobert-giay-ra-vien-ner)
+            - [phobert-vehicle-registration-ner](https://huggingface.co/ngocthanhdoan/phobert-vehicle-registration-ner)
+
+            ### Changes
+            See [CHANGELOG](https://github.com/Devhub-Solutions/VietNerm/blob/main/CHANGELOG.md) for details.
+          files: dist/*
+          draft: false
+          prerelease: ${{ contains(needs.build.outputs.version, 'a') || contains(needs.build.outputs.version, 'b') || contains(needs.build.outputs.version, 'rc') }}
+
+  # ================================================================
+  # Job 4: Summary
+  # ================================================================
+  summary:
+    name: "📊 Summary"
+    runs-on: ubuntu-latest
+    needs: [build, publish]
+    if: always()
+    steps:
+      - name: Write summary
         run: |
-          echo "## 🇻🇳 VietNerm Training Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          VERSION="${{ needs.build.outputs.version }}"
+          BUILD="${{ needs.build.result }}"
+          PUBLISH="${{ needs.publish.result }}"
+          DRY="${{ github.event.inputs.dry_run }}"
 
-          if [ "${{ needs.train-on-kaggle.outputs.kernel_status }}" != "complete" ]; then
-            echo "❌ **Kernel Status:** ${{ needs.train-on-kaggle.outputs.kernel_status }}" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Check the Kaggle kernel logs for details." >> $GITHUB_STEP_SUMMARY
-            exit 0
+          echo "## 📦 VietNerm SDK Publish Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Step | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          BUILD_ICON="✅"
+          [ "$BUILD" != "success" ] && BUILD_ICON="❌"
+          echo "| Build \`v${VERSION}\` | ${BUILD_ICON} ${BUILD} |" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$DRY" = "true" ]; then
+            echo "| Publish | ⏭️ skipped (dry run) |" >> $GITHUB_STEP_SUMMARY
+          else
+            PUBLISH_ICON="✅"
+            [ "$PUBLISH" = "skipped" ] && PUBLISH_ICON="⏭️"
+            [ "$PUBLISH" != "success" ] && [ "$PUBLISH" != "skipped" ] && PUBLISH_ICON="❌"
+            echo "| Publish to PyPI | ${PUBLISH_ICON} ${PUBLISH} |" >> $GITHUB_STEP_SUMMARY
           fi
 
-          if [ -f training-output/train_results.json ]; then
-            python3 - << 'PYEOF'
-          import json
-          import os
-
-          with open("training-output/train_results.json") as f:
-              data = json.load(f)
-
-          config = data.get("config", {})
-          results = data.get("results", {})
-
-          summary = []
-          summary.append(f"**Total Time:** {data.get('total_minutes', '?')} minutes")
-          summary.append(f"**Dataset Size:** {config.get('dataset_size', '?'):,}")
-          summary.append(f"**Epochs:** {config.get('train_epochs', '?')}")
-          summary.append(f"**Batch Size:** {config.get('batch_size', '?')}")
-          summary.append("")
-          summary.append("| Doc Type | Status | F1 | Time | Model URL |")
-          summary.append("|----------|--------|----|------|-----------|")
-
-          for doc_type, r in results.items():
-              icon = {"published": "✅", "low_f1": "⚠️"}.get(r["status"], "❌")
-              f1 = f"{r.get('f1', 0):.4f}" if r.get("f1") else "—"
-              time_m = f"{r.get('time_minutes', 0)}m"
-              url = r.get("model_url", "—")
-              if url != "—":
-                  url = f"[Link]({url})"
-              summary.append(f"| {icon} {doc_type} | {r['status']} | {f1} | {time_m} | {url} |")
-
-          published = sum(1 for r in results.values() if r["status"] == "published")
-          summary.append("")
-          summary.append(f"**Result:** {published}/{len(results)} models published")
-
-          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
-              f.write("\n".join(summary))
-          PYEOF
-          else
-            echo "⚠️ No training results file found." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "$PUBLISH" = "success" ]; then
+            echo "🎉 **Published:** https://pypi.org/project/vietnerm/${VERSION}/" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+            echo "pip install vietnerm==${VERSION}" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           fi
