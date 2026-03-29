@@ -58,19 +58,13 @@ jobs:
         id: get_version
         run: |
           VERSION=$(python3 -c "
-          import re
-          content = open('sdk/vietnerm/__init__.py').read()
-          m = re.search(r'__version__\s*=\s*[\"\']([\d.]+[^\"\']*)[\"\']]', content)
-          if not m:
-              m = re.search(r'__version__\s*=\s*[\"\']([\w.+-]+)[\"\']]', content)
-          print(m.group(1) if m else 'unknown')
-          " 2>/dev/null || python3 -c "
           import ast, sys
-          tree = ast.parse(open('sdk/vietnerm/__init__.py').read())
+          with open('sdk/vietnerm/__init__.py', 'r', encoding='utf-8') as f:
+              tree = ast.parse(f.read())
           for node in ast.walk(tree):
               if isinstance(node, ast.Assign):
-                  for t in node.targets:
-                      if isinstance(t, ast.Name) and t.id == '__version__':
+                  for target in node.targets:
+                      if isinstance(target, ast.Name) and target.id == '__version__':
                           print(ast.literal_eval(node.value))
                           sys.exit(0)
           print('unknown')
