@@ -26,6 +26,7 @@ Registry source: registry/documents.yaml
 
 import json
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -55,6 +56,55 @@ _TFIDF_MIN_SCORE = 0.10
 # Minimum ratio of best_score / second_best_score to accept detection
 # (1.08 = best must be at least 8% higher than second best)
 _TFIDF_MIN_MARGIN = 1.03
+
+
+def _default_sdk_rules() -> Dict[str, "DocTypeRule"]:
+    """Built-in keyword rules for pip-installed SDK environments.
+
+    These rules are used when no local templates/index/rules can be discovered.
+    They keep auto-detection usable out-of-the-box for the core document types.
+    """
+    return {
+        "cccd": DocTypeRule(
+            strong_keywords=["căn cước công dân", "can cuoc cong dan"],
+            weak_keywords=["số", "quốc tịch", "giới tính", "nơi thường trú"],
+        ),
+        "giay_ra_vien": DocTypeRule(
+            strong_keywords=["giấy ra viện", "giay ra vien"],
+            weak_keywords=[
+                "bệnh viện",
+                "khoa",
+                "vào viện",
+                "ra viện",
+                "chẩn đoán",
+                "phương pháp điều trị",
+            ],
+        ),
+        "giay_khai_sinh": DocTypeRule(
+            strong_keywords=["giấy khai sinh", "giay khai sinh"],
+            weak_keywords=[
+                "họ và tên",
+                "ngày sinh",
+                "nơi sinh",
+                "họ và tên cha",
+                "họ và tên mẹ",
+            ],
+        ),
+        "gplx": DocTypeRule(
+            strong_keywords=["giấy phép lái xe", "giay phep lai xe"],
+            weak_keywords=["hạng", "ngày cấp", "có giá trị đến", "quốc tịch"],
+        ),
+        "vehicle_registration": DocTypeRule(
+            strong_keywords=["đăng ký xe", "giấy đăng ký xe", "dang ky xe"],
+            weak_keywords=[
+                "biển số",
+                "số máy",
+                "số khung",
+                "chủ xe",
+                "nhãn hiệu",
+            ],
+        ),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -487,21 +537,23 @@ def _load_index_from_hub(repo_id: str) -> Optional["_TFIDFIndex"]:
 
 def _normalize_text(text: str) -> str:
     text = text.lower()
+    text = unicodedata.normalize("NFD", text)
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+    text = re.sub(r"[^a-z0-9]+", " ", text)
     text = re.sub(r"\s+", " ", text)
-    text = re.sub(r"[_\-]{2,}", " ", text)
     return text.strip()
 
 
 def _score_text(text_norm: str, rule: "DocTypeRule") -> float:
     score = 0.0
     for kw in rule.strong_keywords:
-        if kw in text_norm:
+        if _normalize_text(kw) in text_norm:
             score += _STRONG_WEIGHT
     for kw in rule.weak_keywords:
-        if kw in text_norm:
+        if _normalize_text(kw) in text_norm:
             score += _WEAK_WEIGHT
     for kw in rule.exclude_keywords:
-        if kw in text_norm:
+        if _normalize_text(kw) in text_norm:
             score += _EXCLUDE_PENALTY
     return max(score, 0.0)
 
@@ -603,10 +655,13 @@ class DocTypeDetector:
 
     def _auto_discover(self) -> Tuple[Dict[str, DocTypeRule], Optional["_TFIDFIndex"]]:
         """Try to discover rules from common locations."""
+        packaged_templates = Path(__file__).resolve().parent / "templates"
+
         # 1. templates/ in cwd or repo root
         for candidate in [
             Path("templates"),
             Path(__file__).parent.parent.parent / "templates",
+            packaged_templates,
         ]:
             if candidate.is_dir() and any(candidate.glob("*/template_*.txt")):
                 rules = _build_rules_from_templates(candidate)
@@ -632,12 +687,16 @@ class DocTypeDetector:
         for candidate in [
             Path("templates"),
             Path(__file__).parent.parent.parent / "templates",
+            packaged_templates,
         ]:
             if candidate.is_dir() and any(candidate.glob("*/schema.yaml")):
                 rules = _build_rules_from_schema_only(candidate)
                 return rules, None
 
-        return {}, None
+        # 4. Built-in rules for pip-installed SDK (no templates shipped)
+        rules = _default_sdk_rules()
+        index = _TFIDFIndex.build_from_rules(rules)
+        return rules, index
 
     # ------------------------------------------------------------------
     # Runtime registration
@@ -688,13 +747,10 @@ class DocTypeDetector:
             margin_ok = (second_raw <= 0) or (best_raw_score / (second_raw + 1e-9) >= _TFIDF_MIN_MARGIN)
 
             if best_raw_score < _TFIDF_MIN_SCORE or not margin_ok:
-                return DetectionResult(
-                    doc_type=None,
-                    confidence=0.0,
-                    scores={t: 0.0 for t in ordered_types},
-                    is_confident=False,
-                    method="tfidf",
-                )
+                # Fall back to keyword scoring below (useful when index exists
+                # but has weak/empty corpora in pip-installed SDK environments).
+                ordered_types = []
+                ordered_scores = []
 
             # Softmax-normalize positive scores for interpretable confidence
             scores_arr = np.array(ordered_scores, dtype=np.float64)

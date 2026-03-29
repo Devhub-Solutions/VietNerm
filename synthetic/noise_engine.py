@@ -166,6 +166,18 @@ class NoiseEngine:
 
             char = text[i]
 
+            # Newline corruption (OCR often merges/splits lines unexpectedly)
+            if char == "\n" and random.random() < self._noise_level * 0.12:
+                if random.random() < 0.5:
+                    # Merge two lines directly
+                    cumulative_offset -= 1
+                    i += 1
+                    continue
+                # Replace newline with a single space
+                result_chars.append(" ")
+                i += 1
+                continue
+
             # Character substitution
             if (random.random() < self._noise_level * 0.15
                     and char in CHAR_SUBSTITUTIONS):
@@ -189,8 +201,8 @@ class NoiseEngine:
                     # Already handled
                     continue
 
-            # Character deletion
-            if random.random() < self._noise_level * 0.05 and char not in "\n ":
+            # Character deletion (including occasional whitespace deletion)
+            if random.random() < self._noise_level * 0.05 and char != "\n":
                 cumulative_offset -= 1
                 i += 1
                 continue
@@ -204,9 +216,13 @@ class NoiseEngine:
             # Spacing issues
             if random.random() < self._noise_level * 0.05:
                 if char == " ":
-                    # Double space
-                    result_chars.append("  ")
-                    cumulative_offset += 1
+                    if random.random() < 0.6:
+                        # Double space
+                        result_chars.append("  ")
+                        cumulative_offset += 1
+                    else:
+                        # Remove separator space (e.g., "GIẤY RA VIỆN" -> "GIẤY RAVIỆN")
+                        cumulative_offset -= 1
                     i += 1
                     continue
 

@@ -1,0 +1,18 @@
+CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+Độc lập - Tự do - Hạnh phúc
+SOCIALIST REPUBLIC OF VIET NAM
+Independence - Freedom - Happiness
+GIẤY PHÉP LÁI XE/DRIVER'S LICENSE
+Số/No: {{ id_number }}
+Họ tên/Full name: {{ full_name }}
+Ngày sinh/Date of Birth
+{{ date_of_birth }}
+Quốc tịch/Nationality
+{{ nationality }}
+Ngày cấp/Date of issue
+{{ nationality.upper() }} {{ issue_date }}
+Ngày hết hạn/Expiration date: {{ expiry_date }}
+Thuật Cơ quan cấp/Issuing authority: Sở Giao thông vận tải tháng 19
+Nơi cư trú/Address: {{ address_part1 }}
+Hạng/Class: {{ class }}
+{{ address_part2 }}

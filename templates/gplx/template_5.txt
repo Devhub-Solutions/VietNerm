@@ -1,0 +1,15 @@
+CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+Độc lập - Tự do - Hạnh phúc
+GIẤY PHÉP LÁI XE / DRIVER'S LICENSE
+Số/No: {{ id_number }}
+Họ tên/Full name: {{ full_name }}
+Ngày sinh/Date of Birth
+{{ date_of_birth }}
+Quốc tịch/Nationality
+{{ nationality }}
+Ngày cấp/Date of issue
+VIỆT NAM {{ issue_date }}
+Nơi cư trú/Address: {{ address }}
+Hạng/Class:
+{{ class }}
+Ngày hết hạn/Expiration date: {{ expiry_date }}

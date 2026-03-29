@@ -1,0 +1,24 @@
+CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+Độc lập - Tự do - Hạnh phúc
+Số: {{ id_number }}
+GIẤY KHAI SINH
+HỌ, CHỮ ĐỆM, TÊN: {{ full_name }}
+Ngày tháng năm sinh: {{ date_of_birth }}
+ghi bằng chữ: {{ dob_text }}
+Giới tính: {{ gender }}
+Dân tộc: {{ ethnicity }}
+Quốc tịch: {{ nationality }}
+Nơi sinh: {{ place_of_birth }}
+Quê quán: {{ registration_place }}
+Họ, chữ đệm, tên người mẹ: {{ mother_name }}
+Dân tộc: Kinh
+Quốc tịch: Việt Nam
+Họ, chữ đệm, tên người cha: {{ father_name }}
+Dân tộc: Kinh
+Quốc tịch: Việt Nam
+Nơi đăng ký khai sinh: {{ registration_place }}
+Ngày, tháng, năm đăng ký: {{ registration_date }}
+NGƯỜI KÝ GIẤY KHAI SINH
+(Ký, ghi rõ họ, chữ đệm, tên, chức vụ, và đóng dấu)
+KT CHỦ TỊCH
+PHÓ CHỦ TỊCH
