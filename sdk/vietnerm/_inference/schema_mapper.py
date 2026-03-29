@@ -21,6 +21,8 @@ class SchemaMapper:
         schema_path: Path to schema.yaml file. If None, auto-resolved from
             templates/{doc_type}/schema.yaml.
         entity_to_field: Optional explicit mapping from entity type to output field.
+        id2label: Optional model label mapping used to auto-derive entity mapping.
+        model_repo_id: Optional HF repo id, kept for debugging/metadata.
     """
 
     # Default entity-to-field mappings per document type
@@ -59,8 +61,11 @@ class SchemaMapper:
         doc_type: str,
         schema_path: Optional[str] = None,
         entity_to_field: Optional[Dict[str, str]] = None,
+        id2label: Optional[Dict[int, str]] = None,
+        model_repo_id: Optional[str] = None,
     ) -> None:
         self.doc_type = doc_type
+        self.model_repo_id = model_repo_id
         self.schema: Optional[Dict[str, Any]] = None
         self.expected_fields: List[str] = []
 
@@ -81,10 +86,40 @@ class SchemaMapper:
         # Entity type → output field mapping
         if entity_to_field:
             self.entity_to_field = entity_to_field
+        elif id2label:
+            self.entity_to_field = self._derive_mapping_from_id2label(id2label)
         elif doc_type in self.DEFAULT_MAPPINGS:
             self.entity_to_field = self.DEFAULT_MAPPINGS[doc_type]
         else:
             self.entity_to_field = {}
+
+    @staticmethod
+    def _derive_mapping_from_id2label(id2label: Dict[int, str]) -> Dict[str, str]:
+        """Derive ``ENTITY_TYPE`` -> ``field_name`` mapping from BIO labels.
+
+        Example:
+            ``B-full_name`` -> ``{"FULL_NAME": "full_name"}``
+        """
+        entity_to_field: Dict[str, str] = {}
+        seen_fields: set[str] = set()
+
+        for label in id2label.values():
+            if not isinstance(label, str):
+                continue
+            if label == "O":
+                continue
+            if "-" not in label:
+                continue
+            prefix, raw_field = label.split("-", 1)
+            if prefix not in {"B", "I"}:
+                continue
+            field = raw_field.strip()
+            if not field or field in seen_fields:
+                continue
+            seen_fields.add(field)
+            entity_to_field[field.upper()] = field
+
+        return entity_to_field
 
     def map_entities(
         self,
