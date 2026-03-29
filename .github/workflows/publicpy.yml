@@ -54,6 +54,9 @@ jobs:
       - name: Install build tools
         run: pip install build twine
 
+      - name: Sync templates into SDK package
+        run: python scripts/sync_sdk_templates.py
+
       - name: Get version from __init__.py
         id: get_version
         run: |

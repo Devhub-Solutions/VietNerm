@@ -1,0 +1,26 @@
+doc_type: giay_khai_sinh
+entities:
+  - name: id_number
+    type: id
+  - name: full_name
+    type: person_name
+  - name: gender
+    type: gender
+  - name: date_of_birth
+    type: date
+  - name: dob_text
+    type: text
+  - name: place_of_birth
+    type: address
+  - name: ethnicity
+    type: text
+  - name: nationality
+    type: address
+  - name: father_name
+    type: person_name
+  - name: mother_name
+    type: person_name
+  - name: registration_place
+    type: address
+  - name: registration_date
+    type: date

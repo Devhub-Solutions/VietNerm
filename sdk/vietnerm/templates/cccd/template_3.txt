@@ -1,0 +1,17 @@
+CÓ CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM THỊ
+Độc lập - Tự do - Hạnh phúc triển
+AND SOCIALIST REPUBLIC OF VIET NAMENT
+It Is Independence - Freedom - Happiness State
+CĂN CƯỚC
+IDENTITY CARD
+0
+Thành Số đinh danh cá nhân/Personal identification number 1996
+{{ id_number }}
+Thuật Họ, chữ đệm và tên khai sinh /Full name: 1970
+{{ full_name }}
+1971 Ngày, tháng, năm sinh /Date of birth 1992
+Giới tinh/Son
+{{ date_of_birth }}
+{{ gender }}
+Lê Quốc tịch /Nationalty
+{{ nationality }}

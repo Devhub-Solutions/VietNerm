@@ -1,0 +1,16 @@
+CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM THỊ
+Độc lập - Tự do - Hạnh phúc
+SOCIALIST REPUBLIC OF VIET NAM
+Independence - Freedom - Happiness Stand
+CĂN CƯỚC CÔNG DÂN
+Citizen Identity Card O
+Số INo: {{ id_number }}
+Họ và tên / Full name:
+{{ full_name }}
+Ngày sinh I Date of birth: {{ date_of_birth }}
+Giới tính/ Sex: {{ gender }} Quốc tịch INationality: {{ nationality }}
+Quê quán I Place of origin:
+{{ place_of_origin }}
+Nơi thường trú i Place of residence: {{ place_of_residence }}
+Có giá trị đến: {{ date_of_expiry }}
+Date of expiry

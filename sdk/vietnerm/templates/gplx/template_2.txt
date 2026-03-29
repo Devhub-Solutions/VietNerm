@@ -1,0 +1,19 @@
+BỘ GTVT
+CÔNG HÒA XÃ HÔI CHỦ NGHĨA VIỆT NAM THỊ
+MOT
+Độc lập - Tự do - Hạnh phúc thái
+GIẤY PHÉP LÁIXE/DRIVER'S LICENSE
+Số/No: {{ id_number }}
+Họ tên/Full namez
+{{ full_name }}
+Ngày sinh/Date of Birth:
+{{ date_of_birth }}
+Quốc tịch/Nationality:
+{{ nationality }}
+Nơi cư trú/Address-1
+{{ address }}
+1971 TP. Hồ Chi Minh, ngày/datel1 {{ issue_date }}
+GIÁM ĐỐC
+- 3/Class: {{ class }}
+Có giá trị đến/Expires: {{ expiry_date }}
+Bùi Xuân Cường

@@ -1,0 +1,59 @@
+1. PHƯƠNG TIỆN
+Số lượng lốp, cỡ lốp/trục (Number of tires; Tire size/axle)
+(VEHICLE)
+Biển đăng ký: {{ plate_number }}
+Số quản lý: {{ id_number }}
+(Registration Number)
+(Vehicle Inspection No.)
+Loại phương tiện: (Type) {{ vehicle_type }}
+Nhãn hiệu: (Mark) {{ brand }}
+Số loại: (Model code) {{ model_code }}
+{{ registration_date }}
+Số máy: (Engine Number) {{ engine_number }}
+Số phiếu kiểm định
+(Issued on: Day/Month/Year)
+Số khung: (Chassis Number) {{ chassis_number }}
+(Inspection Report No)
+ĐƠN Vị KIỂM ĐỊNH
+Năm, Nước sản xuất: {{ manufacture_year }}, {{ manufacture_country }}
+Niên hạn SD:
+(INSPECTION CENTER)
+(Manufactured Year and Country)
+(Lifetime limit to)
+Có hiệu lực đến hết ngày {{ expiry_date }}
+Kinh doanh vận tải (Commercial Use)
+Cải tạo (Modification)
+(Valid until)
+GIÁM ĐỐC
+2. THÔNG SỐ KỸ THUẬT
+(SPECIFICATIONS)
+Công thức bánh xe: 4x2
+Vết bánh xe:
+(Wheel Formula)
+(mm)
+(Wheel Tread)
+Kích thước bao: (Overall Dimension)
+(mm)
+Kích thước lòng thùng xe
+(Inside cargo container dimension)
+(mm)
+Chiều dài cơ sở: (Wheelbase)
+(mm)
+Khối lượng bản thân: (Kerb mass)
+(kg)
+Khối lượng hàng CC theo TK/CP TGGT:
+(kg)
+(Design/Authorized pay load)
+Khối lượng toàn bộ theo TK/CP TGGT:
+(kg)
+(Design/Authorized total mass)
+Khối lượng kéo theo TK/CP TGGT:
+(kg)
+(Design/Authorized towed mass)
+Số người cho phép chở:
+(Permissible No. of Pers Carried: seat, stood place, laying place)
+Có lắp thiết bị giám sát hành trình (Equipped with Tachograph)
+Có lắp camera (Equipped with camera)
+Loại nhiên liệu: (Type of Fuel Used) Xăng
+{{ owner_name }}
+{{ owner_address }}
