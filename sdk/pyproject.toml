@@ -53,4 +53,8 @@ where = ["."]
 include = ["vietnerm*"]
 
 [tool.setuptools.package-data]
-"vietnerm" = ["py.typed"]
+"vietnerm" = [
+    "py.typed",
+    "templates/*/schema.yaml",
+    "templates/*/template_*.txt",
+]

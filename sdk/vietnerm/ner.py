@@ -29,7 +29,7 @@ Usage::
     >>> ner = VietNerm.for_doc("giay_khai_sinh")
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from ._inference.pipeline import NERPipeline
 from ._inference.schema_mapper import SchemaMapper
@@ -146,7 +146,7 @@ class VietNerm:
     def extract(
         self,
         text: str,
-        doc_type: Optional[str] = None,
+        doc_type: Optional[Union[str, DetectionResult]] = None,
         validate: bool = True,
     ) -> Dict[str, str]:
         """Extract structured entities from document text.
@@ -163,7 +163,7 @@ class VietNerm:
         Raises:
             ValueError: If no doc_type specified.
         """
-        dt = doc_type or self.doc_type
+        dt = self._resolve_doc_type_input(doc_type) or self.doc_type
         if not dt:
             raise ValueError(
                 "doc_type must be specified either in constructor or extract() call. "
@@ -176,7 +176,7 @@ class VietNerm:
     def extract_with_confidence(
         self,
         text: str,
-        doc_type: Optional[str] = None,
+        doc_type: Optional[Union[str, DetectionResult]] = None,
         validate: bool = True,
     ) -> Dict[str, Dict[str, Any]]:
         """Extract entities with confidence scores.
@@ -189,7 +189,7 @@ class VietNerm:
         Returns:
             Dict mapping field names to ``{"value": str, "confidence": float}``.
         """
-        dt = doc_type or self.doc_type
+        dt = self._resolve_doc_type_input(doc_type) or self.doc_type
         if not dt:
             raise ValueError("doc_type required")
         self._ensure_loaded(dt)
@@ -201,7 +201,7 @@ class VietNerm:
     def extract_raw(
         self,
         text: str,
-        doc_type: Optional[str] = None,
+        doc_type: Optional[Union[str, DetectionResult]] = None,
     ) -> List[Dict]:
         """Get raw NER predictions without schema mapping.
 
@@ -212,7 +212,7 @@ class VietNerm:
         Returns:
             List of entity dicts with type, text, start, end, confidence.
         """
-        dt = doc_type or self.doc_type
+        dt = self._resolve_doc_type_input(doc_type) or self.doc_type
         if not dt:
             raise ValueError("doc_type required")
         self._ensure_loaded(dt)
@@ -339,7 +339,9 @@ class VietNerm:
         """
         return [m["doc_type"] for m in cls.available_models(hf_username)]
 
-    def get_schema(self, doc_type: Optional[str] = None) -> Dict[str, str]:
+    def get_schema(
+        self, doc_type: Optional[Union[str, DetectionResult]] = None
+    ) -> Dict[str, str]:
         """Get the field schema for a document type.
 
         Loads the model if needed and returns the auto-discovered mapping.
@@ -355,13 +357,15 @@ class VietNerm:
             >>> VietNerm("cccd").get_schema()
             {'ID_NUMBER': 'id_number', 'FULL_NAME': 'full_name', ...}
         """
-        dt = doc_type or self.doc_type
+        dt = self._resolve_doc_type_input(doc_type) or self.doc_type
         if not dt:
             raise ValueError("doc_type required")
         self._ensure_loaded(dt)
         return dict(self._mappers[dt].entity_to_field)
 
-    def get_fields(self, doc_type: Optional[str] = None) -> List[str]:
+    def get_fields(
+        self, doc_type: Optional[Union[str, DetectionResult]] = None
+    ) -> List[str]:
         """Get the list of extractable fields for a document type.
 
         Args:
@@ -375,7 +379,7 @@ class VietNerm:
             >>> VietNerm("cccd").get_fields()
             ['date_of_birth', 'date_of_expiry', 'full_name', ...]
         """
-        dt = doc_type or self.doc_type
+        dt = self._resolve_doc_type_input(doc_type) or self.doc_type
         if not dt:
             raise ValueError("doc_type required")
         self._ensure_loaded(dt)
@@ -388,6 +392,20 @@ class VietNerm:
     def _resolve_model_path(self, doc_type: str) -> str:
         """Resolve doc_type to HF Hub repo ID."""
         return f"{self.hf_username}/phobert-{doc_type}-ner"
+
+    @staticmethod
+    def _resolve_doc_type_input(
+        doc_type: Optional[Union[str, DetectionResult]]
+    ) -> Optional[str]:
+        """Normalize doc_type input to a string identifier.
+
+        Accepts either a plain string or a ``DetectionResult`` object.
+        """
+        if isinstance(doc_type, DetectionResult):
+            return doc_type.doc_type
+        if isinstance(doc_type, str):
+            return doc_type
+        return None
 
     def _ensure_loaded(self, doc_type: str) -> None:
         """Ensure pipeline + mapper are loaded for doc_type."""

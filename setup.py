@@ -7,7 +7,7 @@ long_description = (Path(__file__).parent / "README.md").read_text(encoding="utf
 
 setup(
     name="vietnerm",
-    version="0.1.0",
+    version="0.2.1",
     description=(
         "PhoBERT NER pipeline for Vietnamese document entity extraction"
     ),

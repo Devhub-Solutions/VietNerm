@@ -1,0 +1,13 @@
+TÔNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM THUY
+Độc lập Tự do - Hạnh phúc
+CĂN CƯỚC CÔNG DÂN
+{{ id_number }}
+Họ và tên
+{{ full_name }}
+Ngày, tháng, năm sinh: {{ date_of_birth }}
+{{ nationality }}
+Giới tính: {{ gender }}
+Quốc tịch:
+Quê quán: {{ place_of_origin }}
+- Nơi thường trù {{ place_of_residence }}
+Có giá trị đến: {{ date_of_expiry }}

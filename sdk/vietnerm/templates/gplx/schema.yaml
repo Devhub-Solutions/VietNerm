@@ -1,0 +1,18 @@
+doc_type: gplx
+entities:
+  - name: id_number
+    type: id
+  - name: full_name
+    type: person_name
+  - name: date_of_birth
+    type: date
+  - name: nationality
+    type: address
+  - name: address
+    type: address
+  - name: issue_date
+    type: date
+  - name: expiry_date
+    type: date
+  - name: class
+    type: code
