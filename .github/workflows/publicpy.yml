@@ -12,7 +12,7 @@
 # Release workflow:
 #   1. Bump version in sdk/vietnerm/__init__.py (__version__ = "x.y.z")
 #   2. Commit: git commit -m "chore: bump version to x.y.z"
-#   3. Tag:    git tag v x.y.z && git push origin vx.y.z
+#   3. Tag:    git tag vx.y.z && git push origin vx.y.z
 #   4. This workflow runs automatically and publishes to PyPI
 ###############################################################################
 name: "Publish SDK to PyPI"
@@ -58,25 +58,32 @@ jobs:
         id: get_version
         run: |
           VERSION=$(python3 -c "
-          import re
-          content = open('sdk/vietnerm/__init__.py').read()
-          m = re.search(r'__version__\s*=\s*[\"\']([\d.]+[^\"\']*)[\"\']]', content)
-          if not m:
-              m = re.search(r'__version__\s*=\s*[\"\']([\w.+-]+)[\"\']]', content)
-          print(m.group(1) if m else 'unknown')
-          " 2>/dev/null || python3 -c "
           import ast, sys
-          tree = ast.parse(open('sdk/vietnerm/__init__.py').read())
+          with open('sdk/vietnerm/__init__.py', 'r', encoding='utf-8') as f:
+              tree = ast.parse(f.read())
           for node in ast.walk(tree):
               if isinstance(node, ast.Assign):
-                  for t in node.targets:
-                      if isinstance(t, ast.Name) and t.id == '__version__':
+                  for target in node.targets:
+                      if isinstance(target, ast.Name) and target.id == '__version__':
                           print(ast.literal_eval(node.value))
                           sys.exit(0)
           print('unknown')
           ")
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Building version: ${VERSION}"
+
+      - name: Validate tag matches package version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${{ steps.get_version.outputs.version }}"
+          EXPECTED_TAG="v${VERSION}"
+          echo "Tag from ref: ${TAG}"
+          echo "Version from package: ${VERSION}"
+          if [ "${TAG}" != "${EXPECTED_TAG}" ]; then
+            echo "::error::Tag/version mismatch. Expected ${EXPECTED_TAG} but got ${TAG}."
+            exit 1
+          fi
 
      
 
