@@ -12,7 +12,7 @@
 # Release workflow:
 #   1. Bump version in sdk/vietnerm/__init__.py (__version__ = "x.y.z")
 #   2. Commit: git commit -m "chore: bump version to x.y.z"
-#   3. Tag:    git tag v x.y.z && git push origin vx.y.z
+#   3. Tag:    git tag vx.y.z && git push origin vx.y.z
 #   4. This workflow runs automatically and publishes to PyPI
 ###############################################################################
 name: "Publish SDK to PyPI"
@@ -77,6 +77,19 @@ jobs:
           ")
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Building version: ${VERSION}"
+
+      - name: Validate tag matches package version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${{ steps.get_version.outputs.version }}"
+          EXPECTED_TAG="v${VERSION}"
+          echo "Tag from ref: ${TAG}"
+          echo "Version from package: ${VERSION}"
+          if [ "${TAG}" != "${EXPECTED_TAG}" ]; then
+            echo "::error::Tag/version mismatch. Expected ${EXPECTED_TAG} but got ${TAG}."
+            exit 1
+          fi
 
      
 
