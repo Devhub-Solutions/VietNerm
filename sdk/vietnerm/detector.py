@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+from .download import DownloadConfig, with_ssl_fallback
 
 
 # ---------------------------------------------------------------------------
@@ -507,11 +508,23 @@ def build_and_save_rules(templates_dir: Path, output_path: Path) -> Dict[str, "D
 # Hub loading
 # ---------------------------------------------------------------------------
 
-def _load_rules_from_hub(repo_id: str) -> Optional[Dict[str, "DocTypeRule"]]:
+def _load_rules_from_hub(
+    repo_id: str,
+    download_config: Optional[DownloadConfig] = None,
+) -> Optional[Dict[str, "DocTypeRule"]]:
     """Download detector_rules.json from a HuggingFace Hub repo."""
     try:
         from huggingface_hub import hf_hub_download
-        local_path = hf_hub_download(repo_id=repo_id, filename="detector_rules.json")
+        cfg = download_config or DownloadConfig()
+        cfg.apply_environment()
+        local_path = with_ssl_fallback(
+            lambda: hf_hub_download(
+                repo_id=repo_id,
+                filename="detector_rules.json",
+                **cfg.to_hf_kwargs(),
+            ),
+            cfg,
+        )
         with open(local_path, "r", encoding="utf-8") as f:
             raw = json.load(f)
         return {dt: DocTypeRule.from_dict(d) for dt, d in raw.items()}
@@ -519,11 +532,23 @@ def _load_rules_from_hub(repo_id: str) -> Optional[Dict[str, "DocTypeRule"]]:
         return None
 
 
-def _load_index_from_hub(repo_id: str) -> Optional["_TFIDFIndex"]:
+def _load_index_from_hub(
+    repo_id: str,
+    download_config: Optional[DownloadConfig] = None,
+) -> Optional["_TFIDFIndex"]:
     """Download detector_index.json from a HuggingFace Hub repo."""
     try:
         from huggingface_hub import hf_hub_download
-        local_path = hf_hub_download(repo_id=repo_id, filename="detector_index.json")
+        cfg = download_config or DownloadConfig()
+        cfg.apply_environment()
+        local_path = with_ssl_fallback(
+            lambda: hf_hub_download(
+                repo_id=repo_id,
+                filename="detector_index.json",
+                **cfg.to_hf_kwargs(),
+            ),
+            cfg,
+        )
         with open(local_path, "r", encoding="utf-8") as f:
             raw = json.load(f)
         return _TFIDFIndex.from_dict(raw)
@@ -636,13 +661,18 @@ class DocTypeDetector:
         return cls(rules=rules, index=index, threshold=threshold)
 
     @classmethod
-    def from_hub(cls, repo_id: str, threshold: float = _DEFAULT_THRESHOLD) -> "DocTypeDetector":
+    def from_hub(
+        cls,
+        repo_id: str,
+        threshold: float = _DEFAULT_THRESHOLD,
+        download_config: Optional[DownloadConfig] = None,
+    ) -> "DocTypeDetector":
         """Load detector from HuggingFace Hub.
 
         Downloads detector_index.json (TF-IDF) and detector_rules.json (fallback).
         """
-        index = _load_index_from_hub(repo_id)
-        rules = _load_rules_from_hub(repo_id)
+        index = _load_index_from_hub(repo_id, download_config=download_config)
+        rules = _load_rules_from_hub(repo_id, download_config=download_config)
         if not rules and index is None:
             raise ValueError(
                 f"Neither detector_index.json nor detector_rules.json found in: {repo_id}"

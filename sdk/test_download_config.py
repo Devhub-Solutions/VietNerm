@@ -2,7 +2,7 @@
 
 import os
 
-from vietnerm.download import DownloadConfig, clear_cache
+from vietnerm.download import DownloadConfig, clear_cache, with_ssl_fallback
 
 
 def test_download_config_kwargs_and_ssl_env():
@@ -36,3 +36,32 @@ def test_clear_cache_repo_only(tmp_path):
 
     assert deleted == 1
     assert not repo_path.exists()
+
+
+def test_with_ssl_fallback_retries_on_ssl_error():
+    calls = {"count": 0}
+
+    def flaky():
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise RuntimeError("SSL: CERTIFICATE_VERIFY_FAILED")
+        return "ok"
+
+    out = with_ssl_fallback(flaky, DownloadConfig())
+    assert out == "ok"
+    assert calls["count"] == 2
+
+
+def test_with_ssl_fallback_does_not_retry_non_ssl_error():
+    calls = {"count": 0}
+
+    def broken():
+        calls["count"] += 1
+        raise RuntimeError("model file not found")
+
+    try:
+        with_ssl_fallback(broken, DownloadConfig())
+        raise AssertionError("Expected RuntimeError")
+    except RuntimeError as exc:
+        assert "not found" in str(exc)
+    assert calls["count"] == 1

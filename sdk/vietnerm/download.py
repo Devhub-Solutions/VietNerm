@@ -7,9 +7,11 @@ import os
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional, TypeVar
 
 import httpx
+
+T = TypeVar("T")
 
 
 @dataclass
@@ -22,6 +24,7 @@ class DownloadConfig:
     revision: Optional[str] = None
     token: Optional[str] = None
     disable_ssl_verify: bool = False
+    auto_disable_ssl_fallback: bool = True
 
     def apply_environment(self) -> None:
         if self.disable_ssl_verify:
@@ -117,8 +120,41 @@ def predownload_model(repo_id: str, config: Optional[DownloadConfig] = None) -> 
 
     from huggingface_hub import snapshot_download
 
+    return with_ssl_fallback(
+        lambda: snapshot_download(repo_id=repo_id, **cfg.to_hf_kwargs()),
+        cfg,
+    )
+
+
+def with_ssl_fallback(fn: Callable[[], T], config: Optional[DownloadConfig] = None) -> T:
+    """Run a download function with automatic SSL fallback when possible.
+
+    Behavior:
+      1. If ``disable_ssl_verify=True``: execute directly in no-SSL mode.
+      2. Otherwise, execute normally first.
+      3. If failed and ``auto_disable_ssl_fallback=True``: retry once in no-SSL mode.
+    """
+    cfg = config or DownloadConfig()
+
     if cfg.disable_ssl_verify:
         with no_ssl_verification():
-            return snapshot_download(repo_id=repo_id, **cfg.to_hf_kwargs())
-    else:
-        return snapshot_download(repo_id=repo_id, **cfg.to_hf_kwargs())
+            return fn()
+
+    try:
+        return fn()
+    except Exception as exc:
+        if not cfg.auto_disable_ssl_fallback:
+            raise
+
+        message = str(exc).lower()
+        looks_like_ssl_error = (
+            isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout))
+            or "ssl" in message
+            or "certificate" in message
+            or "self signed" in message
+        )
+        if not looks_like_ssl_error:
+            raise
+
+        with no_ssl_verification():
+            return fn()
