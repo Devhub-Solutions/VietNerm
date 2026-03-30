@@ -293,7 +293,7 @@ class PhoBERTNERTrainer:
         trainer.train()
 
         # Save model, tokenizer, trainer state, and label map
-         print("==> Saving model and state to {output_dir}...")
+        print("==> Saving model and state to {output_dir}...")
         trainer.save_model(str(output_dir))
         trainer.save_state()
         self._tokenizer.save_pretrained(str(output_dir))
