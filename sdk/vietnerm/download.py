@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
+
+import httpx
 
 
 @dataclass
@@ -38,6 +41,19 @@ class DownloadConfig:
         if self.token:
             kwargs["token"] = self.token
         return kwargs
+
+
+@contextlib.contextmanager
+def no_ssl_verification():
+    # Lưu constructor gốc
+    Client = httpx.Client
+    # Override: mọi Client tạo ra đều verify=False
+    httpx.Client = lambda *args, **kwargs: Client(*args, verify=False, **kwargs)
+    try:
+        yield
+    finally:
+        # Khôi phục lại Client gốc
+        httpx.Client = Client
 
 
 def clear_cache(cache_dir: Optional[str] = None, repo_id: Optional[str] = None) -> int:
@@ -73,4 +89,8 @@ def predownload_model(repo_id: str, config: Optional[DownloadConfig] = None) -> 
 
     from huggingface_hub import snapshot_download
 
-    return snapshot_download(repo_id=repo_id, **cfg.to_hf_kwargs())
+    if cfg.disable_ssl_verify:
+        with no_ssl_verification():
+            return snapshot_download(repo_id=repo_id, **cfg.to_hf_kwargs())
+    else:
+        return snapshot_download(repo_id=repo_id, **cfg.to_hf_kwargs())
