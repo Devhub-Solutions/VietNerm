@@ -54,7 +54,7 @@ class PhoBERTNERTrainer:
     _INT_KEYS = {
         "max_length", "num_train_epochs", "per_device_train_batch_size",
         "per_device_eval_batch_size", "warmup_steps", "logging_steps",
-        "early_stopping_patience",
+        "early_stopping_patience", "save_total_limit",
     }
 
     def __init__(self, config: Dict[str, Any]) -> None:
@@ -270,6 +270,8 @@ class PhoBERTNERTrainer:
             use_cpu=_cuda_disabled,
             optim=self._config.get("optim", "adamw_torch"),
             warmup_steps=self._config.get("warmup_steps", 100),
+            save_total_limit=self._config.get("save_total_limit", 1),
+            save_only_model=self._config.get("save_only_model", True),
         )
 
         id2label = self._id2label

@@ -506,11 +506,17 @@ with open(output_path, "w") as f:
 import shutil
 for doc_type, r in results.items():
     if r["status"] in ("published", "low_f1", "no_hf_token") or r.get("f1", 0) > 0:
-        model_src = Path(f"models/phobert/{doc_type}")
+        # Chỉ copy thư mục clean_model để tránh các file thừa (checkpoints, logs, optimizer state)
+        # giúp giảm dung lượng artifact từ ~8GB xuống mức tối thiểu.
+        model_src = Path(f"models/phobert/{doc_type}/clean_model")
+        # Nếu clean_model không tồn tại (do lỗi training hoặc version cũ), fallback về thư mục gốc
+        if not model_src.exists():
+            model_src = Path(f"models/phobert/{doc_type}")
+            
         model_dst = Path(f"/kaggle/working/models/phobert/{doc_type}")
         if model_src.exists():
             shutil.copytree(model_src, model_dst, dirs_exist_ok=True)
-            print(f"Copied model: {doc_type} -> {model_dst}")
+            print(f"Copied clean model: {doc_type} -> {model_dst}")
 
 # Summary
 print("\n" + "=" * 60)
