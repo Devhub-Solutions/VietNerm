@@ -25,6 +25,8 @@ def test_download_config_kwargs_and_ssl_env():
         "token": "abc",
     }
     assert os.environ.get("HF_HUB_DISABLE_SSL_VERIFY") == "1"
+    assert os.environ.get("SSL_CERT_FILE") == ""
+    assert os.environ.get("PYTHONHTTPSVERIFY") == "0"
 
 
 def test_clear_cache_repo_only(tmp_path):

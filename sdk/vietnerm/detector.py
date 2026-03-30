@@ -820,11 +820,24 @@ class DocTypeDetector:
                 norm_scores = {k: v / total for k, v in raw_scores.items()}
                 best_type = max(norm_scores, key=norm_scores.__getitem__)
                 best_conf = norm_scores[best_type]
+                # OCR thực tế có thể bị nhiễu nặng khiến confidence bị kéo thấp.
+                # Nếu vẫn match được strong keyword đặc trưng (vd: "căn cước công dân"),
+                # cho phép ngưỡng mềm hơn để giảm trường hợp trả về None.
+                strong_hits = sum(
+                    1
+                    for kw in self.rules[best_type].strong_keywords
+                    if _normalize_text(kw) in text_norm
+                )
+                confident_with_strong_hit = (
+                    strong_hits > 0
+                    and best_conf >= min(self.threshold, 0.15)
+                )
+                is_confident = best_conf >= self.threshold or confident_with_strong_hit
                 return DetectionResult(
-                    doc_type=best_type if best_conf >= self.threshold else None,
+                    doc_type=best_type if is_confident else None,
                     confidence=round(best_conf, 4),
                     scores={k: round(v, 4) for k, v in norm_scores.items()},
-                    is_confident=best_conf >= self.threshold,
+                    is_confident=is_confident,
                     method="keyword",
                 )
 
