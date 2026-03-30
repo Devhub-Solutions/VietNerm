@@ -1,3 +1,4 @@
+
 """
 Push trained NER model to HuggingFace Hub.
 
@@ -9,6 +10,7 @@ Usage:
 import argparse
 import json
 import sys
+import shutil
 from pathlib import Path
 from string import Template
 from typing import Optional
@@ -174,9 +176,31 @@ def push_model(
         URL of the published model.
     """
     if model_dir is None:
-        model_path = Path("models") / "phobert" / doc_type
+        base_model_path = Path("models") / "phobert" / doc_type
     else:
-        model_path = Path(model_dir)
+        base_model_path = Path(model_dir)
+
+    # Prioritize clean_model directory if it exists
+    clean_model_path = base_model_path / "clean_model"
+    if clean_model_path.exists() and clean_model_path.is_dir():
+        model_path = clean_model_path
+        print(f"[INFO] Found clean model at {model_path}. Using this for upload.")
+        # No ignore_patterns needed as clean_model should only contain inference files
+        ignore_patterns = []
+    else:
+        model_path = base_model_path
+        print(f"[INFO] No clean model found. Using base model directory {model_path} for upload.")
+        # Define ignore patterns for non-clean directories
+        ignore_patterns = [
+            "checkpoint-*",
+            "*.pt",  # PyTorch optimizer/scheduler states
+            "optimizer.*",
+            "scheduler.*",
+            "scaler.*",
+            "rng_state.*",
+            "trainer_state.json",
+            "training_args.bin",
+        ]
 
     if not model_path.exists():
         print(f"[ERROR] Model directory not found: {model_path}")
@@ -200,23 +224,14 @@ def push_model(
     with open(readme_path, "w", encoding="utf-8") as f:
         f.write(model_card)
 
-    # Remove checkpoint directories before upload to save space
-    # Checkpoints contain optimizer.pt, scheduler.pt etc. that are not needed for inference
-    for ckpt_dir in model_path.glob("checkpoint-*"):
-        if ckpt_dir.is_dir():
-            import shutil
-            size_mb = sum(f.stat().st_size for f in ckpt_dir.rglob("*") if f.is_file()) / (1024 * 1024)
-            shutil.rmtree(ckpt_dir)
-            print(f"[INFO] Removed checkpoint: {ckpt_dir.name} ({size_mb:.0f} MB)")
-
-    # Upload all files (ignore any remaining checkpoint dirs and cache files)
+    # Upload files
     print(f"[INFO] Uploading model files from {model_path}...")
     api.upload_folder(
         folder_path=str(model_path),
         repo_id=repo_id,
         repo_type="model",
         token=token,
-        ignore_patterns=["checkpoint-*", "*.pt", "optimizer.*", "scheduler.*", "scaler.*", "rng_state.*"],
+        ignore_patterns=ignore_patterns,
     )
 
     # Squash history: giữ chỉ version mới nhất, xóa tất cả commit cũ

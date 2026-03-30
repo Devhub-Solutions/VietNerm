@@ -8,8 +8,25 @@ and early stopping.
 import json
 import os
 import random
+import shutil
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
+
+
+_INFERENCE_FILES = [
+    "config.json",
+    "model.safetensors",
+    "pytorch_model.bin",  # Fallback for older models
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "vocab.txt",
+    "bpe.codes",
+    "special_tokens_map.json",
+    "added_tokens.json",
+    "label_map.json",
+    "README.md",
+    ".gitattributes",
+]
 
 import numpy as np
 import torch
@@ -276,7 +293,7 @@ class PhoBERTNERTrainer:
         trainer.train()
 
         # Save model, tokenizer, trainer state, and label map
-        print(f"==> Saving model and state to {output_dir}...")
+         print("==> Saving model and state to {output_dir}...")
         trainer.save_model(str(output_dir))
         trainer.save_state()
         self._tokenizer.save_pretrained(str(output_dir))
@@ -288,8 +305,40 @@ class PhoBERTNERTrainer:
                 f, ensure_ascii=False, indent=2,
             )
 
+        # Save a clean version for inference
+        self.clean_save_pretrained(output_dir / "clean_model")
+
         print("==> Done!")
         return self._tokenizer, self._model, self._id2label
+
+    def clean_save_pretrained(self, save_directory: Path) -> None:
+        """Save only essential inference files to a clean directory."""
+        save_directory.mkdir(parents=True, exist_ok=True)
+
+        # Save model and tokenizer to a temporary location first
+        temp_full_model_dir = save_directory / "_temp_full_model"
+        temp_full_model_dir.mkdir(parents=True, exist_ok=True)
+
+        self._model.save_pretrained(str(temp_full_model_dir))
+        self._tokenizer.save_pretrained(str(temp_full_model_dir))
+
+        # Copy only essential files
+        for file_pattern in _INFERENCE_FILES:
+            for file_path in temp_full_model_dir.glob(file_pattern):
+                if file_path.is_file():
+                    shutil.copy(file_path, save_directory / file_path.name)
+
+        # Clean up temporary full model directory
+        shutil.rmtree(temp_full_model_dir)
+
+        # Save label map
+        label_map_path = save_directory / "label_map.json"
+        with open(label_map_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {"id2label": self._id2label, "label2id": self._label2id},
+                f, ensure_ascii=False, indent=2,
+            )
+        print(f"[INFO] Clean model saved to {save_directory}")
 
     def _load_real_data(
         self,
