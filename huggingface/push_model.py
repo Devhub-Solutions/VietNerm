@@ -226,6 +226,21 @@ def push_model(
     with open(readme_path, "w", encoding="utf-8") as f:
         f.write(model_card)
 
+    # Hard cleanup: delete all checkpoint-* directories and large non-inference files locally before upload
+    print(f"[INFO] Hard cleaning local directory {model_path} before upload...")
+    for item in model_path.glob("checkpoint-*"):
+        if item.is_dir():
+            print(f"  Removing local checkpoint: {item.name}")
+            shutil.rmtree(item)
+    
+    for pattern in ["*.pt", "optimizer.*", "scheduler.*", "trainer_state.json", "training_args.bin", "runs/", "logs/"]:
+        for item in model_path.glob(pattern):
+            if item.is_dir():
+                shutil.rmtree(item)
+            elif item.is_file():
+                item.unlink()
+            print(f"  Removed local junk: {item.name}")
+
     # Upload files
     print(f"[INFO] Uploading model files from {model_path}...")
     api.upload_folder(
@@ -233,7 +248,7 @@ def push_model(
         repo_id=repo_id,
         repo_type="model",
         token=token,
-        ignore_patterns=ignore_patterns,
+        delete_patterns=["checkpoint-*", "runs/*", "logs/*", "*.pt", "optimizer.*", "scheduler.*", "trainer_state.json", "training_args.bin"],
     )
 
     # Squash history: giữ chỉ version mới nhất, xóa tất cả commit cũ
