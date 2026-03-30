@@ -22,6 +22,7 @@ import torch
 from transformers import AutoModelForTokenClassification, AutoTokenizer
 
 from .postprocess import merge_subtoken_predictions, clean_entity_boundaries, compute_confidence
+from ..download import DownloadConfig
 
 # PhoBERT hard limit: 256 content tokens + CLS + SEP = 258
 _PHOBERT_MAX_CONTENT = 254  # leave 2 slots for CLS/SEP
@@ -36,14 +37,20 @@ def _is_hub_id(model_path: str) -> bool:
     return len(parts) == 2
 
 
-def _load_label_map_from_hub(repo_id: str) -> Optional[Dict]:
+def _load_label_map_from_hub(repo_id: str, download_config: Optional[DownloadConfig] = None) -> Optional[Dict]:
     """Try to download label_map.json from a HuggingFace Hub repo.
 
     Returns the parsed dict, or None if the file does not exist.
     """
     try:
         from huggingface_hub import hf_hub_download
-        local_path = hf_hub_download(repo_id=repo_id, filename="label_map.json")
+        cfg = download_config or DownloadConfig()
+        cfg.apply_environment()
+        local_path = hf_hub_download(
+            repo_id=repo_id,
+            filename="label_map.json",
+            **cfg.to_hf_kwargs(),
+        )
         with open(local_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
@@ -70,18 +77,26 @@ class NERPipeline:
         device: str = "auto",
         max_length: int = 256,
         stride: int = 128,
+        download_config: Optional[DownloadConfig] = None,
     ) -> None:
         self.model_path = model_path
         self.max_length = min(max_length, 256)  # enforce PhoBERT hard limit
         self.stride = stride
+        self.download_config = download_config or DownloadConfig()
+        self.download_config.apply_environment()
 
         if device == "auto":
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
         else:
             self.device = device
 
-        self.tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
-        self.model = AutoModelForTokenClassification.from_pretrained(model_path)
+        hf_kwargs = self.download_config.to_hf_kwargs()
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            model_path, use_fast=False, **hf_kwargs
+        )
+        self.model = AutoModelForTokenClassification.from_pretrained(
+            model_path, **hf_kwargs
+        )
         self.model = self.model.to(self.device)
         self.model.eval()
 
@@ -95,7 +110,7 @@ class NERPipeline:
         # Try loading label_map.json — local path or HuggingFace Hub
         label_map: Optional[Dict] = None
         if _is_hub_id(model_path):
-            label_map = _load_label_map_from_hub(model_path)
+            label_map = _load_label_map_from_hub(model_path, self.download_config)
         else:
             label_map_path = Path(model_path) / "label_map.json"
             if label_map_path.exists():

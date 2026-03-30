@@ -34,6 +34,7 @@ from typing import Any, Dict, List, Optional, Union
 from ._inference.pipeline import NERPipeline
 from ._inference.schema_mapper import SchemaMapper
 from .detector import DocTypeDetector, DetectionResult
+from .download import DownloadConfig, clear_cache, predownload_model
 
 # Default HuggingFace username that hosts the trained models
 _DEFAULT_HF_USERNAME = "ngocthanhdoan"
@@ -87,11 +88,13 @@ class VietNerm:
         hf_username: str = _DEFAULT_HF_USERNAME,
         device: str = "auto",
         max_length: int = 256,
+        download_config: Optional[DownloadConfig] = None,
     ) -> None:
         self.doc_type = doc_type
         self.hf_username = hf_username
         self.device = device
         self.max_length = min(max_length, 256)
+        self.download_config = download_config or DownloadConfig()
         self._pipelines: Dict[str, NERPipeline] = {}
         self._mappers: Dict[str, SchemaMapper] = {}
         self._detector: Optional[DocTypeDetector] = None
@@ -112,6 +115,7 @@ class VietNerm:
         model_path: Optional[str] = None,
         hf_username: str = _DEFAULT_HF_USERNAME,
         device: str = "auto",
+        download_config: Optional[DownloadConfig] = None,
     ) -> "VietNerm":
         """Create an extractor for a specific document type.
 
@@ -137,7 +141,28 @@ class VietNerm:
             model_path=model_path,
             hf_username=hf_username,
             device=device,
+            download_config=download_config,
         )
+
+
+    @classmethod
+    def predownload(
+        cls,
+        doc_type: str,
+        hf_username: str = _DEFAULT_HF_USERNAME,
+        download_config: Optional[DownloadConfig] = None,
+    ) -> str:
+        """Pre-download model artifacts for offline or faster cold-start."""
+        repo_id = f"{hf_username}/phobert-{doc_type}-ner"
+        return predownload_model(repo_id=repo_id, config=download_config)
+
+    @staticmethod
+    def clear_model_cache(
+        cache_dir: Optional[str] = None,
+        repo_id: Optional[str] = None,
+    ) -> int:
+        """Clear HuggingFace cache globally or for one repo."""
+        return clear_cache(cache_dir=cache_dir, repo_id=repo_id)
 
     # ------------------------------------------------------------------
     # Core methods
@@ -422,6 +447,7 @@ class VietNerm:
             model_path=model_path,
             device=self.device,
             max_length=self.max_length,
+            download_config=self.download_config,
         )
         self._pipelines[doc_type] = pipeline
 

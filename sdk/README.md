@@ -288,18 +288,27 @@ result = ner.extract_with_confidence(text)    # Dict[str, {"value": str, "confid
 raw = ner.extract_raw(text)                   # List[Dict] - raw entities
 ```
 
-### Shortcut Classes
+### Cấu hình download model (SSL / cache / predownload)
 
 ```python
-from vietnerm import CCCDNer, GiayRaVienNer
+from vietnerm import VietNerm, DownloadConfig
 
-# CCCD (Căn cước công dân)
-cccd = CCCDNer()
-result = cccd.extract("Số: 079203030140\nHọ và tên: NGUYỄN VĂN A")
+cfg = DownloadConfig(
+    cache_dir="./.hf-cache",      # custom cache
+    disable_ssl_verify=True,       # tắt verify SSL (mạng nội bộ/self-signed)
+    force_download=False,
+)
 
-# Giấy ra viện
-grv = GiayRaVienNer()
-result = grv.extract("Họ tên người bệnh: LÊ THỊ HẰNG\nChẩn đoán: Viêm phổi")
+ner = VietNerm(doc_type="cccd", download_config=cfg)
+
+# Predownload model để chạy offline / giảm cold-start
+local_snapshot = VietNerm.predownload("cccd", download_config=cfg)
+
+# Xóa cache model cụ thể
+VietNerm.clear_model_cache(repo_id="ngocthanhdoan/phobert-cccd-ner")
+
+# Hoặc xóa toàn bộ cache HF
+VietNerm.clear_model_cache(cache_dir="./.hf-cache")
 ```
 
 ### Inference Pipeline (low-level)
