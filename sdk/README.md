@@ -295,7 +295,8 @@ from vietnerm import VietNerm, DownloadConfig
 
 cfg = DownloadConfig(
     cache_dir="./.hf-cache",      # custom cache
-    disable_ssl_verify=True,       # tắt verify SSL (mạng nội bộ/self-signed)
+    disable_ssl_verify=False,      # để False: thử SSL bình thường trước
+    auto_disable_ssl_fallback=True,# nếu lỗi SSL sẽ tự retry với verify=False
     force_download=False,
 )
 
