@@ -185,12 +185,12 @@ def push_model(
     if clean_model_path.exists() and clean_model_path.is_dir():
         model_path = clean_model_path
         print(f"[INFO] Found clean model at {model_path}. Using this for upload.")
-        # No ignore_patterns needed as clean_model should only contain inference files
-        ignore_patterns = []
+        # Even in clean_model, ensure no stray large files are uploaded
+        ignore_patterns = ["checkpoint-*", "*.pt", "optimizer.*", "scheduler.*", "trainer_state.json", "training_args.bin"]
     else:
         model_path = base_model_path
         print(f"[INFO] No clean model found. Using base model directory {model_path} for upload.")
-        # Define ignore patterns for non-clean directories
+        # Define strict ignore patterns for non-clean directories
         ignore_patterns = [
             "checkpoint-*",
             "*.pt",  # PyTorch optimizer/scheduler states
@@ -200,6 +200,8 @@ def push_model(
             "rng_state.*",
             "trainer_state.json",
             "training_args.bin",
+            "runs/",
+            "logs/",
         ]
 
     if not model_path.exists():

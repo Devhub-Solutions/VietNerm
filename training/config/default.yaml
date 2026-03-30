@@ -13,6 +13,8 @@ warmup_steps: 100
 logging_steps: 50
 eval_strategy: "epoch"
 save_strategy: "epoch"
+save_total_limit: 1
+save_only_model: true
 load_best_model_at_end: true
 metric_for_best_model: "f1"
 optim: "adamw_torch"
