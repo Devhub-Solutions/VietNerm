@@ -8,6 +8,7 @@ and early stopping.
 import json
 import os
 import random
+import shutil
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -37,7 +38,21 @@ class PhoBERTNERTrainer:
     _INT_KEYS = {
         "max_length", "num_train_epochs", "per_device_train_batch_size",
         "per_device_eval_batch_size", "warmup_steps", "logging_steps",
-        "early_stopping_patience",
+        "early_stopping_patience", "save_total_limit",
+    }
+    _INFERENCE_KEEP_FILES = {
+        "config.json",
+        "model.safetensors",
+        "pytorch_model.bin",  # fallback for older Transformers
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "special_tokens_map.json",
+        "vocab.txt",
+        "bpe.codes",
+        "added_tokens.json",
+        "label_map.json",
+        "README.md",
+        ".gitattributes",
     }
 
     def __init__(self, config: Dict[str, Any]) -> None:
@@ -253,6 +268,8 @@ class PhoBERTNERTrainer:
             use_cpu=_cuda_disabled,
             optim=self._config.get("optim", "adamw_torch"),
             warmup_steps=self._config.get("warmup_steps", 100),
+            save_total_limit=self._config.get("save_total_limit", 1),
+            save_only_model=self._config.get("save_only_model", True),
         )
 
         id2label = self._id2label
@@ -288,8 +305,23 @@ class PhoBERTNERTrainer:
                 f, ensure_ascii=False, indent=2,
             )
 
+        clean_dir = output_dir / "inference"
+        self._export_inference_dir(output_dir, clean_dir)
+        print(f"==> Exported clean inference artifacts to {clean_dir}")
+
         print("==> Done!")
         return self._tokenizer, self._model, self._id2label
+
+    def _export_inference_dir(self, source_dir: Path, target_dir: Path) -> None:
+        """Export a clean inference-only directory from training output."""
+        if target_dir.exists():
+            shutil.rmtree(target_dir)
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        for file_name in sorted(self._INFERENCE_KEEP_FILES):
+            src = source_dir / file_name
+            if src.exists() and src.is_file():
+                shutil.copy2(src, target_dir / file_name)
 
     def _load_real_data(
         self,

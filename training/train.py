@@ -109,6 +109,7 @@ def main() -> None:
     )
 
     print(f"\n==> Model saved to {output_dir}")
+    print(f"==> Clean inference folder: {output_dir / 'inference'}")
     print("==> Training complete!")
 
 

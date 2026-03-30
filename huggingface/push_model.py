@@ -8,12 +8,29 @@ Usage:
 
 import argparse
 import json
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 from string import Template
 from typing import Optional
 
 from huggingface_hub import HfApi, create_repo
+
+_INFERENCE_FILE_ALLOWLIST = {
+    "config.json",
+    "model.safetensors",
+    "pytorch_model.bin",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "special_tokens_map.json",
+    "vocab.txt",
+    "bpe.codes",
+    "added_tokens.json",
+    "label_map.json",
+    "README.md",
+    ".gitattributes",
+}
 
 
 def squash_repo_history(
@@ -177,6 +194,10 @@ def push_model(
         model_path = Path("models") / "phobert" / doc_type
     else:
         model_path = Path(model_dir)
+    clean_model_path = model_path / "inference"
+    if clean_model_path.exists():
+        print(f"[INFO] Using clean inference directory: {clean_model_path}")
+        model_path = clean_model_path
 
     if not model_path.exists():
         print(f"[ERROR] Model directory not found: {model_path}")
@@ -200,24 +221,31 @@ def push_model(
     with open(readme_path, "w", encoding="utf-8") as f:
         f.write(model_card)
 
-    # Remove checkpoint directories before upload to save space
-    # Checkpoints contain optimizer.pt, scheduler.pt etc. that are not needed for inference
-    for ckpt_dir in model_path.glob("checkpoint-*"):
-        if ckpt_dir.is_dir():
-            import shutil
-            size_mb = sum(f.stat().st_size for f in ckpt_dir.rglob("*") if f.is_file()) / (1024 * 1024)
-            shutil.rmtree(ckpt_dir)
-            print(f"[INFO] Removed checkpoint: {ckpt_dir.name} ({size_mb:.0f} MB)")
+    # Build upload folder with inference-only files
+    with tempfile.TemporaryDirectory(prefix="vietnerm_hf_upload_") as tmp:
+        upload_dir = Path(tmp)
+        copied = []
+        for file_name in sorted(_INFERENCE_FILE_ALLOWLIST):
+            src = model_path / file_name
+            if src.exists() and src.is_file():
+                shutil.copy2(src, upload_dir / file_name)
+                copied.append(file_name)
 
-    # Upload all files (ignore any remaining checkpoint dirs and cache files)
-    print(f"[INFO] Uploading model files from {model_path}...")
-    api.upload_folder(
-        folder_path=str(model_path),
-        repo_id=repo_id,
-        repo_type="model",
-        token=token,
-        ignore_patterns=["checkpoint-*", "*.pt", "optimizer.*", "scheduler.*", "scaler.*", "rng_state.*"],
-    )
+        required_any = {"model.safetensors", "pytorch_model.bin"}
+        if not (required_any & set(copied)) or "config.json" not in copied:
+            print(
+                "[ERROR] Missing required model artifacts in upload folder. "
+                "Need config.json and model weights."
+            )
+            sys.exit(1)
+
+        print(f"[INFO] Uploading inference-only files ({len(copied)} files)...")
+        api.upload_folder(
+            folder_path=str(upload_dir),
+            repo_id=repo_id,
+            repo_type="model",
+            token=token,
+        )
 
     # Squash history: giữ chỉ version mới nhất, xóa tất cả commit cũ
     print("[INFO] Squashing repo history...")

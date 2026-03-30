@@ -405,12 +405,16 @@ print(json.dumps({{"eval_f1": metrics.get("eval_f1", 0.0)}}))
         model_repo = f"{HF_USERNAME}/phobert-{doc_type}-ner"
         dataset_repo = f"{HF_USERNAME}/vietnerm-{doc_type}-dataset"
         private_flag = ["--private"] if HF_PRIVATE else []
+        model_dir_for_push = Path(f"models/phobert/{doc_type}/inference")
+        if not model_dir_for_push.exists():
+            model_dir_for_push = Path(f"models/phobert/{doc_type}")
 
         # Push model
         print(f"  Model  -> {model_repo}")
         ret = subprocess.run(
             [sys.executable, "huggingface/push_model.py",
              "--doc", doc_type, "--repo", model_repo,
+             "--model-dir", str(model_dir_for_push),
              "--token", HF_TOKEN] + private_flag,
             capture_output=True, text=True
         )
@@ -506,7 +510,9 @@ with open(output_path, "w") as f:
 import shutil
 for doc_type, r in results.items():
     if r["status"] in ("published", "low_f1", "no_hf_token") or r.get("f1", 0) > 0:
-        model_src = Path(f"models/phobert/{doc_type}")
+        model_src = Path(f"models/phobert/{doc_type}/inference")
+        if not model_src.exists():
+            model_src = Path(f"models/phobert/{doc_type}")
         model_dst = Path(f"/kaggle/working/models/phobert/{doc_type}")
         if model_src.exists():
             shutil.copytree(model_src, model_dst, dirs_exist_ok=True)

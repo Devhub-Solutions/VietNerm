@@ -35,7 +35,8 @@ Factory method::
 from .ner import VietNerm
 from .detector import DocTypeDetector, DetectionResult, DocTypeRule
 from .registry import ModelRegistry
-__version__ = "0.2.3"
+from .download import DownloadConfig, no_ssl_verification
+__version__ = "0.2.4"
 __author__ = "VietNerm Team"
 
 __all__ = [
@@ -44,5 +45,7 @@ __all__ = [
     "DetectionResult",
     "DocTypeRule",
     "ModelRegistry",
+    "DownloadConfig",
+    "no_ssl_verification",
     "__version__",
 ]

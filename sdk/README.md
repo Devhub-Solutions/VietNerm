@@ -288,18 +288,40 @@ result = ner.extract_with_confidence(text)    # Dict[str, {"value": str, "confid
 raw = ner.extract_raw(text)                   # List[Dict] - raw entities
 ```
 
-### Shortcut Classes
+### Cấu hình download model (SSL / cache / predownload)
 
 ```python
-from vietnerm import CCCDNer, GiayRaVienNer
+from vietnerm import VietNerm, DownloadConfig, no_ssl_verification
 
-# CCCD (Căn cước công dân)
-cccd = CCCDNer()
-result = cccd.extract("Số: 079203030140\nHọ và tên: NGUYỄN VĂN A")
+model_id = "ngocthanhdoan/phobert-cccd-ner"
 
-# Giấy ra viện
-grv = GiayRaVienNer()
-result = grv.extract("Họ tên người bệnh: LÊ THỊ HẰNG\nChẩn đoán: Viêm phổi")
+cfg = DownloadConfig(
+    cache_dir="./.hf-cache",      # custom cache
+    disable_ssl_verify=True,       # tắt verify SSL (mạng nội bộ/self-signed)
+    force_download=False,
+)
+
+# Load model với SSL bypass (qua download_config)
+ner = VietNerm(doc_type="cccd", download_config=cfg)
+
+# Predownload theo kiểu local_dir + no symlink
+local_dir = "models/phobert-cccd-ner"
+local_snapshot = VietNerm.predownload(
+    "cccd",
+    download_config=cfg,
+    local_dir=local_dir,
+    local_dir_use_symlinks=False,
+)
+
+# Hoặc gọi context manager trực tiếp (giống mẫu no_ssl_verification)
+with no_ssl_verification():
+    VietNerm.predownload("cccd", local_dir=local_dir, local_dir_use_symlinks=False)
+
+# Xóa cache model cụ thể
+VietNerm.clear_model_cache(repo_id=model_id)
+
+# Hoặc xóa toàn bộ cache HF
+VietNerm.clear_model_cache(cache_dir="./.hf-cache")
 ```
 
 ### Inference Pipeline (low-level)
