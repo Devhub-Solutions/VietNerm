@@ -36,7 +36,7 @@ from .ner import VietNerm
 from .detector import DocTypeDetector, DetectionResult, DocTypeRule
 from .registry import ModelRegistry
 from .download import DownloadConfig
-__version__ = "0.2.4"
+__version__ = "0.2.6"
 __author__ = "VietNerm Team"
 
 __all__ = [
