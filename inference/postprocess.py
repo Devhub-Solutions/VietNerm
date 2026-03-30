@@ -130,23 +130,34 @@ def clean_entity_boundaries(entities: List[Dict]) -> List[Dict]:
       - Strip whitespace
       - Gender normalization
       - Name title-casing
-      - Deduplication (keep first occurrence per entity type)
+      - Merging fragmented entities of the same type (e.g., addresses split by OCR noise)
+      - Deduplication (keep first occurrence for non-mergeable types)
 
     Args:
         entities: Raw entity list from merge_subtoken_predictions.
 
     Returns:
-        Cleaned and deduplicated entity list.
+        Cleaned and merged entity list.
     """
-    cleaned: List[Dict] = []
-    seen_types: set = set()
+    # Types that should be merged if multiple occurrences are found
+    MERGEABLE_TYPES = {
+        "PLACE_OF_ORIGIN",
+        "PLACE_OF_RESIDENCE",
+        "ADDRESS",
+        "PATIENT_ADDRESS",
+        "OWNER_ADDRESS",
+        "REGISTRATION_PLACE",
+        "DIAGNOSIS",
+        "TREATMENT_METHOD",
+        "NOTES",
+    }
+
+    merged_entities: Dict[str, Dict] = {}
+    final_order: List[str] = []
 
     for ent in entities:
         t = ent["type"]
         text = ent["text"].strip()
-
-        if t in seen_types:
-            continue
 
         # Normalize gender
         if "GENDER" in t:
@@ -156,6 +167,22 @@ def clean_entity_boundaries(entities: List[Dict]) -> List[Dict]:
         if "NAME" in t and text == text.upper():
             text = text.title()
 
+        if t in merged_entities:
+            if t in MERGEABLE_TYPES:
+                # Merge fragmented text with a space
+                existing = merged_entities[t]
+                # Avoid duplicating exact same text if it was detected twice
+                if text not in existing["text"]:
+                    existing["text"] += " " + text
+                # Update end position and average confidence
+                existing["end"] = max(existing["end"], ent.get("end", 0))
+                # Simple average for merged confidence
+                existing["confidence"] = round(
+                    (existing["confidence"] + ent.get("confidence", 0.0)) / 2, 4
+                )
+            continue
+
+        # First time seeing this entity type
         ent_clean = {
             "type": t,
             "text": text,
@@ -163,10 +190,10 @@ def clean_entity_boundaries(entities: List[Dict]) -> List[Dict]:
             "end": ent.get("end", 0),
             "confidence": ent.get("confidence", 0.0),
         }
-        cleaned.append(ent_clean)
-        seen_types.add(t)
+        merged_entities[t] = ent_clean
+        final_order.append(t)
 
-    return cleaned
+    return [merged_entities[t] for t in final_order]
 
 
 def validate_entity(entity_type: str, text: str) -> bool:
