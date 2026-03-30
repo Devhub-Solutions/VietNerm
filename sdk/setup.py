@@ -11,7 +11,7 @@ if readme_path.exists():
 
 setup(
     name="vietnerm",
-    version="0.2.6",
+    version="0.2.7",
     description="Vietnamese Document NER Extraction SDK using PhoBERT",
     long_description=long_description,
     long_description_content_type="text/markdown",

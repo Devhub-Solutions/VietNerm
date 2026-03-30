@@ -44,13 +44,23 @@ def _load_label_map_from_hub(repo_id: str, download_config: Optional[DownloadCon
     """
     try:
         from huggingface_hub import hf_hub_download
+        from ..download import no_ssl_verification
         cfg = download_config or DownloadConfig()
         cfg.apply_environment()
-        local_path = hf_hub_download(
-            repo_id=repo_id,
-            filename="label_map.json",
-            **cfg.to_hf_kwargs(),
-        )
+        
+        def _download():
+            return hf_hub_download(
+                repo_id=repo_id,
+                filename="label_map.json",
+                **cfg.to_hf_kwargs(),
+            )
+
+        if cfg.disable_ssl_verify:
+            with no_ssl_verification():
+                local_path = _download()
+        else:
+            local_path = _download()
+            
         with open(local_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
@@ -90,13 +100,23 @@ class NERPipeline:
         else:
             self.device = device
 
+        from ..download import no_ssl_verification
         hf_kwargs = self.download_config.to_hf_kwargs()
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            model_path, use_fast=False, **hf_kwargs
-        )
-        self.model = AutoModelForTokenClassification.from_pretrained(
-            model_path, **hf_kwargs
-        )
+        
+        def _load_model():
+            tokenizer = AutoTokenizer.from_pretrained(
+                model_path, use_fast=False, **hf_kwargs
+            )
+            model = AutoModelForTokenClassification.from_pretrained(
+                model_path, **hf_kwargs
+            )
+            return tokenizer, model
+
+        if self.download_config.disable_ssl_verify:
+            with no_ssl_verification():
+                self.tokenizer, self.model = _load_model()
+        else:
+            self.tokenizer, self.model = _load_model()
         self.model = self.model.to(self.device)
         self.model.eval()
 

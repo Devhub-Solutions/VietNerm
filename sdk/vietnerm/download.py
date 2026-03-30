@@ -45,15 +45,43 @@ class DownloadConfig:
 
 @contextlib.contextmanager
 def no_ssl_verification():
-    # Lưu constructor gốc
-    Client = httpx.Client
-    # Override: mọi Client tạo ra đều verify=False
-    httpx.Client = lambda *args, **kwargs: Client(*args, verify=False, **kwargs)
+    """Context manager to temporarily disable SSL verification in httpx and requests.
+    
+    This is used as a fallback when HuggingFace Hub downloads fail due to 
+    self-signed certificates or other SSL issues.
+    """
+    import httpx
+    import requests
+    import urllib3
+    
+    # Disable urllib3 warnings
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    
+    # Patch httpx
+    original_httpx_client = httpx.Client
+    def patched_httpx_client(*args, **kwargs):
+        if "verify" not in kwargs:
+            kwargs["verify"] = False
+        return original_httpx_client(*args, **kwargs)
+    
+    # Patch requests
+    original_requests_request = requests.Session.request
+    def patched_requests_request(self, method, url, **kwargs):
+        if "verify" not in kwargs:
+            kwargs["verify"] = False
+        return original_requests_request(self, method, url, **kwargs)
+    
+    httpx.Client = patched_httpx_client
+    requests.Session.request = patched_requests_request
+    requests.request = lambda method, url, **kwargs: requests.Session().request(method, url, **kwargs)
+    
     try:
         yield
     finally:
-        # Khôi phục lại Client gốc
-        httpx.Client = Client
+        httpx.Client = original_httpx_client
+        requests.Session.request = original_requests_request
+        # Re-import to restore top-level request if needed, 
+        # but Session.request is the core one used by most libs.
 
 
 def clear_cache(cache_dir: Optional[str] = None, repo_id: Optional[str] = None) -> int:
