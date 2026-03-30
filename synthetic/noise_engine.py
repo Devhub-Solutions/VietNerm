@@ -15,7 +15,7 @@ OCR_NOISE_TOKENS: List[str] = [
     "Contrước", "Trong", "Thuật", "CỔ PHẦN",
     "j5072810750", "Swoodbản",
     "1996", "1970", "1971", "1992", "1988", "2001",
-    "0", "triển", "THỊ",
+    "0", "triển", "THỊ", "X", "6", "19", "TẾ", "C", "Số I No.",
 ]
 
 # Vietnamese diacritics confusion pairs (common OCR errors)

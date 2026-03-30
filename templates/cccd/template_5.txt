@@ -1,0 +1,20 @@
+CÓ CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM THỊ
+X
+Độc lập - Tự do - Hạnh phúc
+SOCIALIST REPUBLIC OF VIET NAM
+Independence - Freedom - Happiness Stark
+CĂN CƯỚC CÔNG DÂN TẾ
+Citizen Identity Card C
+Số I No.
+{{ id_number }}
+Họ và tên/ Full name:
+{{ full_name }}
+Ngày sinh / Date of birth:
+{{ date_of_birth }}
+- Giới tính/ Sex: {{ gender }} Quốc tịch/Nationality: {{ nationality }}
+- Quê quán I Place of origin:
+{{ place_of_origin }}
+Nơi thường trú / Place of residence:
+{{ place_of_residence }}
+Có giá trị đến: {{ date_of_expiry }}
+Date of expiry

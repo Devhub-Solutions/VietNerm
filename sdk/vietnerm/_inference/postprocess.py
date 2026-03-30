@@ -55,9 +55,13 @@ def _trim_bleed_text(entity_type: str, text: str) -> str:
         lower = t.lower()
 
     # For free-text fields frequently contaminated by next label, cut at marker
-    if any(k in entity_type for k in ("ADDRESS", "NOTES", "DIAGNOSIS", "TREATMENT_METHOD")):
+    if any(k in entity_type for k in ("ADDRESS", "NOTES", "DIAGNOSIS", "TREATMENT_METHOD", "PLACE_OF_ORIGIN", "PLACE_OF_RESIDENCE")):
+        cut_markers = list(_BLEED_CUT_MARKERS)
+        # Add some specific OCR noise markers for CCCD
+        cut_markers.extend(["số i no.", "citizen identity", "có giá trị đến", "date of expiry"])
+        
         cut_markers = [
-            m for m in _BLEED_CUT_MARKERS
+            m for m in cut_markers
             if not ("ADDRESS" in entity_type and m in {"hạng/class", "hang/class", "class:", "hạng:"})
         ]
         cut_positions = [
@@ -258,11 +262,11 @@ def validate_entity(entity_type: str, text: str) -> bool:
         "PATIENT_DOB": lambda x: bool(
             re.match(r"^\d{2}/\d{2}/\d{4}$|^\d{4}$", x.strip())
         ),
-        "DOB": lambda x: bool(re.match(r"^\d{2}/\d{2}/\d{4}$", x.strip())),
+        "DOB": lambda x: bool(re.search(r"\d{2}/\d{2}/\d{4}", x.strip())),
         "ADMISSION_DATE": lambda x: bool(re.search(r"\d{1,2}.*\d{4}", x.strip())),
         "DISCHARGE_DATE": lambda x: bool(re.search(r"\d{1,2}.*\d{4}", x.strip())),
         "DATE_OF_EXPIRY": lambda x: bool(
-            re.match(r"^\d{2}/\d{2}/\d{4}$", x.strip())
+            re.search(r"\d{2}/\d{2}/\d{4}", x.strip())
         ),
         "PATIENT_GENDER": lambda x: (
             GENDER_NORMALIZE.get(x.strip().upper(), x.strip()) in ("Nam", "Nữ")
@@ -283,7 +287,7 @@ def validate_entity(entity_type: str, text: str) -> bool:
             )
             and 2 <= len(x.split()) <= 6
         ),
-        "ID_NUMBER": lambda x: bool(re.match(r"^\d{9}$|^\d{12}$", x.strip())),
+        "ID_NUMBER": lambda x: bool(re.match(r"^\d{9,13}$", re.sub(r"\s", "", x.strip()))),
         "BHXH_CODE": lambda x: len(re.sub(r"\s", "", x)) >= 8,
         "MEDICAL_CODE": lambda x: bool(re.search(r"\d", x)),
         "DIAGNOSIS": lambda x: len(x.strip()) >= 5,
