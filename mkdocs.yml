@@ -1,0 +1,22 @@
+site_name: VietNerm Blog
+site_description: VietNerm docs and blog on GitHub Pages
+site_url: https://devhub-solutions.github.io/VietNerm/
+repo_url: https://github.com/Devhub-Solutions/VietNerm
+repo_name: Devhub-Solutions/VietNerm
+
+theme:
+  name: material
+  language: vi
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+
+docs_dir: docs/www
+site_dir: site
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
