@@ -302,6 +302,13 @@ cfg = DownloadConfig(
 
 ner = VietNerm(doc_type="cccd", download_config=cfg)
 
+# Nếu máy bạn bị lỗi SSL/certificate nội bộ:
+cfg_insecure = DownloadConfig(
+    disable_ssl_verify=True,       # bật thẳng verify=False cho các lệnh tải model
+    auto_disable_ssl_fallback=True,
+)
+ner_insecure = VietNerm(doc_type="cccd", download_config=cfg_insecure)
+
 # Predownload model để chạy offline / giảm cold-start
 local_snapshot = VietNerm.predownload("cccd", download_config=cfg)
 
@@ -311,6 +318,34 @@ VietNerm.clear_model_cache(repo_id="ngocthanhdoan/phobert-cccd-ner")
 # Hoặc xóa toàn bộ cache HF
 VietNerm.clear_model_cache(cache_dir="./.hf-cache")
 ```
+
+### OCR + auto-detect an toàn (tránh lỗi `doc_type=None`)
+
+```python
+from vncv.ocr import extract_text
+from vietnerm import VietNerm, DownloadConfig
+
+image_path = "path/to/cccd.jpg"
+ocr_lines = extract_text(image_path)
+rawtext = "\n".join(ocr_lines)
+
+cfg = DownloadConfig(disable_ssl_verify=True)  # nếu môi trường SSL lỗi
+ner = VietNerm(download_config=cfg)
+
+# Khuyến nghị: dùng extract_auto để tránh ValueError khi detector chưa tự tin
+auto = ner.extract_auto(rawtext, detection_threshold=0.2)
+print("Detected:", auto["doc_type"], "confidence=", auto["detection_confidence"])
+print("Fields:", auto["fields"])
+
+# Nếu vẫn muốn extract() thủ công:
+if auto["doc_type"] is not None:
+    fields = ner.extract(rawtext, doc_type=auto["doc_type"])
+    print(fields)
+else:
+    print("Không xác định được doc_type. Hãy giảm threshold hoặc kiểm tra chất lượng OCR.")
+```
+
+> Ghi chú: trường hợp `doc_type=None` thường do chất lượng OCR + ngưỡng confidence, không phải do riêng Python 3.10.
 
 ### Inference Pipeline (low-level)
 

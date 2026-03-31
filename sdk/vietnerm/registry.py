@@ -30,6 +30,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from .download import DownloadConfig, with_ssl_fallback
+
 # Cache TTL: 1 hour
 _CACHE_TTL_SECONDS = 3600
 _DEFAULT_HF_USERNAME = "ngocthanhdoan"
@@ -57,9 +59,12 @@ class ModelRegistry:
         local_registry_path: Optional[str] = None,
         cache_ttl: int = _CACHE_TTL_SECONDS,
         force_refresh: bool = False,
+        download_config: Optional[DownloadConfig] = None,
     ) -> None:
         self.hf_username = hf_username
         self.cache_ttl = cache_ttl
+        self.download_config = download_config or DownloadConfig()
+        self.download_config.apply_environment()
         self._models: Dict[str, Dict[str, Any]] = {}
 
         # Try loading from cache first (unless force_refresh)
@@ -140,7 +145,10 @@ class ModelRegistry:
         try:
             from huggingface_hub import list_models
 
-            models = list(list_models(author=self.hf_username, search="phobert-ner"))
+            models = with_ssl_fallback(
+                lambda: list(list_models(author=self.hf_username, search="phobert-ner")),
+                self.download_config,
+            )
             for model in models:
                 repo_id = model.id if hasattr(model, "id") else str(model)
                 name_part = repo_id.split("/")[-1]

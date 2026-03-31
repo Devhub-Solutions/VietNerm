@@ -31,6 +31,8 @@ class DownloadConfig:
             os.environ["HF_HUB_DISABLE_SSL_VERIFY"] = "1"
             os.environ["CURL_CA_BUNDLE"] = ""
             os.environ["REQUESTS_CA_BUNDLE"] = ""
+            os.environ["SSL_CERT_FILE"] = ""
+            os.environ["PYTHONHTTPSVERIFY"] = "0"
 
     def to_hf_kwargs(self) -> dict:
         kwargs = {

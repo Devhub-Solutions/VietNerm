@@ -34,7 +34,7 @@ from typing import Any, Dict, List, Optional, Union
 from ._inference.pipeline import NERPipeline
 from ._inference.schema_mapper import SchemaMapper
 from .detector import DocTypeDetector, DetectionResult
-from .download import DownloadConfig, clear_cache, predownload_model
+from .download import DownloadConfig, clear_cache, predownload_model, with_ssl_fallback
 
 # Default HuggingFace username that hosts the trained models
 _DEFAULT_HF_USERNAME = "ngocthanhdoan"
@@ -189,10 +189,22 @@ class VietNerm:
             ValueError: If no doc_type specified.
         """
         dt = self._resolve_doc_type_input(doc_type) or self.doc_type
+        detected: Optional[DetectionResult] = None
         if not dt:
+            detected = self.detect_doc_type(text, threshold=0.20)
+            dt = detected.doc_type if detected.is_confident else None
+        if not dt:
+            if detected is None:
+                detected = self.detect_doc_type(text, threshold=0.20)
+            top_scores = sorted(
+                detected.scores.items(), key=lambda kv: kv[1], reverse=True
+            )[:3]
+            top_scores_text = ", ".join(f"{k}={v:.3f}" for k, v in top_scores) or "n/a"
             raise ValueError(
                 "doc_type must be specified either in constructor or extract() call. "
-                "Use extract_auto() for automatic detection."
+                "Auto-detection is currently not confident enough. "
+                f"Best scores: {top_scores_text}. "
+                "Use extract_auto() or pass doc_type explicitly."
             )
         self._ensure_loaded(dt)
         raw = self._pipelines[dt].predict(text)
@@ -216,7 +228,10 @@ class VietNerm:
         """
         dt = self._resolve_doc_type_input(doc_type) or self.doc_type
         if not dt:
-            raise ValueError("doc_type required")
+            detected = self.detect_doc_type(text, threshold=0.20)
+            dt = detected.doc_type if detected.is_confident else None
+        if not dt:
+            raise ValueError("doc_type required (or use extract_auto())")
         self._ensure_loaded(dt)
         raw = self._pipelines[dt].predict(text)
         return self._mappers[dt].map_entities_with_confidence(
@@ -239,7 +254,10 @@ class VietNerm:
         """
         dt = self._resolve_doc_type_input(doc_type) or self.doc_type
         if not dt:
-            raise ValueError("doc_type required")
+            detected = self.detect_doc_type(text, threshold=0.20)
+            dt = detected.doc_type if detected.is_confident else None
+        if not dt:
+            raise ValueError("doc_type required (or use extract_auto())")
         self._ensure_loaded(dt)
         return self._pipelines[dt].predict(text)
 
@@ -311,6 +329,7 @@ class VietNerm:
     def available_models(
         cls,
         hf_username: str = _DEFAULT_HF_USERNAME,
+        download_config: Optional[DownloadConfig] = None,
     ) -> List[Dict[str, str]]:
         """List all available NER models on HuggingFace Hub.
 
@@ -318,6 +337,7 @@ class VietNerm:
 
         Args:
             hf_username: HuggingFace username/org.
+            download_config: Optional download/network config (incl. SSL fallback).
 
         Returns:
             List of dicts with 'doc_type', 'repo_id', 'name'.
@@ -332,8 +352,14 @@ class VietNerm:
         """
         try:
             from huggingface_hub import list_models
+            cfg = download_config or DownloadConfig()
+            cfg.apply_environment()
             results = []
-            for model in list_models(author=hf_username, search="phobert-ner"):
+            models = with_ssl_fallback(
+                lambda: list(list_models(author=hf_username, search="phobert-ner")),
+                cfg,
+            )
+            for model in models:
                 repo_id = model.id if hasattr(model, "id") else str(model)
                 name_part = repo_id.split("/")[-1]
                 if name_part.startswith("phobert-") and name_part.endswith("-ner"):
@@ -351,8 +377,13 @@ class VietNerm:
     def available_doc_types(
         cls,
         hf_username: str = _DEFAULT_HF_USERNAME,
+        download_config: Optional[DownloadConfig] = None,
     ) -> List[str]:
         """List available document type identifiers.
+
+        Args:
+            hf_username: HuggingFace username/org.
+            download_config: Optional download/network config (incl. SSL fallback).
 
         Returns:
             Sorted list of doc_type strings.
@@ -362,7 +393,7 @@ class VietNerm:
             >>> VietNerm.available_doc_types()
             ['cccd', 'giay_khai_sinh', 'giay_ra_vien', 'gplx', 'vehicle_registration']
         """
-        return [m["doc_type"] for m in cls.available_models(hf_username)]
+        return [m["doc_type"] for m in cls.available_models(hf_username, download_config)]
 
     def get_schema(
         self, doc_type: Optional[Union[str, DetectionResult]] = None
