@@ -103,8 +103,8 @@ https://devhub-solutions.github.io/VietNerm/
 ### Thêm bài mới
 
 1. Tạo file Markdown mới trong `docs/www`, ví dụ `docs/www/blog-01.md`.
-2. Thêm đường dẫn file vào mục `nav` trong `mkdocs.yml`.
-3. Commit + push để GitHub Actions tự cập nhật website.
+2. Không cần sửa `nav`, vì hệ thống tự quét tất cả `*.md` trong `docs/www`.
+3. Commit + push để GitHub Actions tự cập nhật website và tự cập nhật danh sách bài viết ở trang chủ.
 
 ---
 
