@@ -83,6 +83,31 @@ Template → Synthetic Data → NER Dataset → Training → Model → HuggingFa
 
 ## ⚙️ Cài đặt
 
+## 🌐 Publish docs/www lên GitHub Pages
+
+Repository đã có workflow `.github/workflows/github-pages.yml` để tự động build toàn bộ file Markdown trong `docs/www` thành website bằng **MkDocs**.
+
+### Cách bật GitHub Pages
+
+1. Vào **Settings → Pages** của repo.
+2. Ở mục **Build and deployment**, chọn **Source: GitHub Actions**.
+3. Push thay đổi lên nhánh `main` (chỉ cần đổi file trong `docs/www` hoặc `mkdocs.yml`).
+4. Chờ workflow **Deploy docs/www to GitHub Pages** chạy xong.
+
+Sau khi deploy, site sẽ có dạng:
+
+```text
+https://devhub-solutions.github.io/VietNerm/
+```
+
+### Thêm bài mới
+
+1. Tạo file Markdown mới trong `docs/www`, ví dụ `docs/www/blog-01.md`.
+2. Thêm đường dẫn file vào mục `nav` trong `mkdocs.yml`.
+3. Commit + push để GitHub Actions tự cập nhật website.
+
+---
+
 ### Yêu cầu hệ thống
 
 | Thành phần | Phiên bản |
