@@ -14,9 +14,9 @@ theme:
 
 nav:
   - Trang chủ: index.md
-  - Tổng quan dự án: overview.md
+  - Tổng quan dự án: vietnerm-document-ai-factory.md
 
-docs_dir: docs/www
+docs_dir: docs/docs/www
 site_dir: site
 
 markdown_extensions:
